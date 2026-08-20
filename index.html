@@ -505,6 +505,8 @@ RECUPERAÇÃO — DIA ATIVO: ${recSummary}`;
       ],
     },
     routineLog: {},
+    oneOffItems: [], // {id, date:'YYYY-MM-DD', text, done}
+    diary: [], // {id, date:'YYYY-MM-DD', text, createdAt}
     goals: [
       {id: uid(), title:'Recuperação escolar — 2º trimestre', type:'Meta', status:'ativo', progress:10,
         description:'Passar na recuperação de todas as matérias do 2º trimestre. Provas a partir de segunda (24/08). Diagnóstico feito — agora é execução.',
@@ -644,6 +646,8 @@ RECUPERAÇÃO — DIA ATIVO: ${recSummary}`;
     if(!state.methodSteps) state.methodSteps = DEFAULT_STATE.methodSteps;
     if(!state.weeklyRoutine) state.weeklyRoutine = DEFAULT_STATE.weeklyRoutine;
     if(!state.routineLog) state.routineLog = {};
+    if(!state.oneOffItems) state.oneOffItems = [];
+    if(!state.diary) state.diary = [];
     (state.goals||[]).forEach(g=>{ if(g.description===undefined) g.description=''; if(!g.notes) g.notes=[]; if(!g.checklist) g.checklist=[]; if(!g.status) g.status='ativo'; });
     (state.subjects||[]).forEach(s=>{ if(!s.notes) s.notes=[]; });
   }
@@ -716,6 +720,7 @@ RECUPERAÇÃO — DIA ATIVO: ${recSummary}`;
   const TABS = [
     {id:'painel', label:'Painel'},
     {id:'rotina', label:'Rotina'},
+    {id:'diario', label:'Diário'},
     {id:'metas', label:'Metas & Projetos'},
     {id:'metricas', label:'Métricas'},
     {id:'recuperacao', label:'Recuperação'},
@@ -755,7 +760,9 @@ RECUPERAÇÃO — DIA ATIVO: ${recSummary}`;
 
     const todayItems = state.weeklyRoutine[todayWeekday()] || [];
     const todayLog = state.routineLog[todayISO()] || {};
-    const routineDone = todayItems.filter(it=>todayLog[it.id]).length;
+    const todayOneOff = state.oneOffItems.filter(o=>o.date===todayISO());
+    const totalToday = todayItems.length + todayOneOff.length;
+    const routineDone = todayItems.filter(it=>todayLog[it.id]).length + todayOneOff.filter(o=>o.done).length;
 
     let html = `<div class="gv-grid cols-2">`;
 
@@ -773,8 +780,8 @@ RECUPERAÇÃO — DIA ATIVO: ${recSummary}`;
     html += `</div>`;
 
     html += `<div class="gv-card"><h2>Rotina de hoje — ${todayWeekday()}</h2>`;
-    html += `<div class="gv-bar-track"><div class="gv-bar-fill" style="width:${todayItems.length? Math.round(routineDone/todayItems.length*100):0}%"></div></div>`;
-    html += `<div class="gv-metric-hist" style="margin-top:6px;">${routineDone}/${todayItems.length} concluídos</div>`;
+    html += `<div class="gv-bar-track"><div class="gv-bar-fill" style="width:${totalToday? Math.round(routineDone/totalToday*100):0}%"></div></div>`;
+    html += `<div class="gv-metric-hist" style="margin-top:6px;">${routineDone}/${totalToday} concluídos${todayOneOff.length?` (inclui ${todayOneOff.length} compromisso(s) de hoje)`:''}</div>`;
     html += `</div>`;
 
     html += `</div>`;
@@ -837,14 +844,15 @@ RECUPERAÇÃO — DIA ATIVO: ${recSummary}`;
     const todayLog = state.routineLog[todayISO()] || {};
     const items = state.weeklyRoutine[activeRoutineDay] || [];
 
-    let html = `<div class="gv-day-tabs">`;
+    let html = `<div class="gv-section-title">Toda ${activeRoutineDay==='Todo dia'?'':''}semana</div>`;
+    html += `<div class="gv-day-tabs">`;
     WEEKDAYS.forEach(d=>{
       const isTodayChip = d===todayWeekday();
       html += `<button class="gv-day-chip ${d===activeRoutineDay?'active':''}" data-routine-day="${d}">${d.slice(0,3)}${isTodayChip?' •hoje':''}</button>`;
     });
     html += `</div>`;
 
-    html += `<div class="gv-card"><h2>${activeRoutineDay}${isToday?' — hoje':''}</h2>`;
+    html += `<div class="gv-card"><h2>${activeRoutineDay}${isToday?' — hoje':''} <span style="text-transform:none; font-weight:500; color:var(--ink-dim);">(repete toda ${activeRoutineDay}-feira)</span></h2>`;
     if(!isToday){
       html += `<div class="gv-item-meta" style="margin-bottom:8px;">Você tá editando o modelo desse dia. As caixinhas só marcam de verdade no dia em que ele realmente acontece.</div>`;
     }
@@ -858,10 +866,42 @@ RECUPERAÇÃO — DIA ATIVO: ${recSummary}`;
       </div>`;
     });
     html += `<div class="gv-add-row">
-      <input class="gv-input" id="gv-new-routine-text" placeholder="Nova obrigação pra ${activeRoutineDay}...">
+      <input class="gv-input" id="gv-new-routine-text" placeholder="Nova obrigação pra ${activeRoutineDay} (toda semana)...">
       <button class="gv-btn" id="gv-add-routine">Adicionar</button>
     </div>`;
     html += `</div>`;
+
+    html += `<div class="gv-section-title">Compromissos com data específica <span class="gv-item-meta">(não se repete)</span></div>`;
+    html += `<div class="gv-card">
+      <div class="gv-item-meta" style="margin-bottom:10px;">Pra coisas tipo "sexta que vem, 16h, tal coisa" — que não é da rotina de toda semana.</div>
+      <div class="gv-add-row">
+        <input class="gv-input" type="date" id="gv-oneoff-date" value="${todayISO()}" style="max-width:170px;">
+        <input class="gv-input" id="gv-oneoff-text" placeholder="O que é (pode incluir horário)...">
+        <button class="gv-btn" id="gv-add-oneoff">Adicionar</button>
+      </div>
+    </div>`;
+
+    const sortedOneOff = [...state.oneOffItems].sort((a,b)=>a.date.localeCompare(b.date));
+    const upcoming = sortedOneOff.filter(o=>o.date>=todayISO() || !o.done);
+    if(upcoming.length){
+      html += `<div style="margin-top:10px;">`;
+      upcoming.forEach(o=>{
+        const d = daysUntil(o.date);
+        let when = d===0?'hoje':(d>0?`em ${d}d`:`atrasado ${Math.abs(d)}d`);
+        html += `<div class="gv-card" style="margin-bottom:8px; padding:10px 14px;">
+          <div class="gv-list-item" style="border:none; padding:0;">
+            <div class="gv-check ${o.done?'done':''}" data-oneoff-check="${o.id}">${o.done?'✓':''}</div>
+            <div style="flex:1;">
+              <div class="gv-item-text ${o.done?'done':''}">${o.text}</div>
+              <div class="gv-item-meta">${fmtDate(o.date)} · ${when}</div>
+            </div>
+            <button class="gv-del" data-oneoff-del="${o.id}">✕</button>
+          </div>
+        </div>`;
+      });
+      html += `</div>`;
+    }
+
     document.getElementById('gv-main').innerHTML = html;
 
     document.querySelectorAll('[data-routine-day]').forEach(el=>{
@@ -887,6 +927,73 @@ RECUPERAÇÃO — DIA ATIVO: ${recSummary}`;
       state.weeklyRoutine[activeRoutineDay].push({id:uid(), text:inp.value.trim()});
       persist(); render();
     };
+    document.getElementById('gv-add-oneoff').onclick = ()=>{
+      const dateEl = document.getElementById('gv-oneoff-date');
+      const textEl = document.getElementById('gv-oneoff-text');
+      if(!textEl.value.trim() || !dateEl.value) return;
+      state.oneOffItems.push({id:uid(), date:dateEl.value, text:textEl.value.trim(), done:false});
+      persist(); render();
+    };
+    document.querySelectorAll('[data-oneoff-check]').forEach(el=>{
+      el.onclick = ()=>{
+        const o = state.oneOffItems.find(x=>x.id===el.dataset.oneoffCheck);
+        o.done = !o.done; persist(); render();
+      };
+    });
+    document.querySelectorAll('[data-oneoff-del]').forEach(el=>{
+      el.onclick = ()=>{
+        state.oneOffItems = state.oneOffItems.filter(x=>x.id!==el.dataset.oneoffDel);
+        persist(); render();
+      };
+    });
+  }
+
+  function renderDiario(){
+    let html = `<div class="gv-card"><h2>Nova anotação</h2>
+      <div class="gv-add-row">
+        <input class="gv-input" type="date" id="gv-diary-date" value="${todayISO()}" style="max-width:170px;">
+      </div>
+      <div class="gv-add-row">
+        <textarea class="gv-textarea" id="gv-diary-text" placeholder="Qualquer coisa: o que aprendeu, ideia nova, o que comprou, descoberta, o que rolou..." style="min-height:90px;"></textarea>
+      </div>
+      <div class="gv-add-row"><button class="gv-btn" id="gv-add-diary">Salvar anotação</button></div>
+    </div>`;
+
+    const grouped = {};
+    [...state.diary].sort((a,b)=> (b.createdAt||0) - (a.createdAt||0)).forEach(e=>{
+      if(!grouped[e.date]) grouped[e.date] = [];
+      grouped[e.date].push(e);
+    });
+    const dates = Object.keys(grouped).sort((a,b)=>b.localeCompare(a));
+
+    html += `<div class="gv-section-title">Anotações</div>`;
+    if(dates.length===0){ html += `<div class="gv-card"><div class="gv-empty">Nenhuma anotação ainda.</div></div>`; }
+    dates.forEach(d=>{
+      html += `<div class="gv-card" style="margin-bottom:10px;"><h2>${fmtDate(d)}${d===todayISO()?' — hoje':''}</h2>`;
+      grouped[d].forEach(e=>{
+        html += `<div class="gv-note" style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start;">
+          <div>${e.text}</div>
+          <button class="gv-del" data-diary-del="${e.id}">✕</button>
+        </div>`;
+      });
+      html += `</div>`;
+    });
+
+    document.getElementById('gv-main').innerHTML = html;
+
+    document.getElementById('gv-add-diary').onclick = ()=>{
+      const dateEl = document.getElementById('gv-diary-date');
+      const textEl = document.getElementById('gv-diary-text');
+      if(!textEl.value.trim()) return;
+      state.diary.push({id:uid(), date: dateEl.value || todayISO(), text: textEl.value.trim(), createdAt: Date.now()});
+      persist(); render();
+    };
+    document.querySelectorAll('[data-diary-del]').forEach(el=>{
+      el.onclick = ()=>{
+        state.diary = state.diary.filter(x=>x.id!==el.dataset.diaryDel);
+        persist(); render();
+      };
+    });
   }
 
   const STATUS_STYLE = {
@@ -1442,6 +1549,7 @@ RECUPERAÇÃO — DIA ATIVO: ${recSummary}`;
     else if(activeTab==='materias' && detailView && detailView.type==='subject') renderSubjectDetail(detailView.id);
     else if(activeTab==='painel') renderPainel();
     else if(activeTab==='rotina') renderRotina();
+    else if(activeTab==='diario') renderDiario();
     else if(activeTab==='metas') renderMetas();
     else if(activeTab==='metricas') renderMetricas();
     else if(activeTab==='recuperacao') renderRecuperacao();
