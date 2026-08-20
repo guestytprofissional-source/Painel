@@ -1,0 +1,1465 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Painel — Miguel</title>
+<meta name="description" content="Painel pessoal de rotina, metas, recuperação e prazos escolares.">
+<meta name="theme-color" content="#14161a">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Painel">
+</head>
+<body style="margin:0;">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root{
+    --bg: #14161a;
+    --panel: #1c1f26;
+    --panel-2: #22262f;
+    --line: #2c313c;
+    --ink: #e8e6e1;
+    --ink-dim: #9aa0ac;
+    --accent: #5b9aa3;
+    --accent-dim: #3e6a71;
+    --warn: #d98e4a;
+    --crit: #c1666b;
+    --ok: #7fae7a;
+  }
+  *{box-sizing:border-box;}
+  #gv-root{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    padding:0;
+    display:flex;
+    flex-direction:column;
+  }
+  .gv-mono{font-family:'JetBrains Mono',monospace;}
+  .gv-display{font-family:'Space Grotesk',sans-serif;}
+
+  .gv-header{
+    padding:20px 24px 16px;
+    border-bottom:1px solid var(--line);
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .gv-header h1{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:20px;
+    font-weight:700;
+    margin:0;
+    letter-spacing:0.02em;
+  }
+  .gv-header .gv-sub{
+    color:var(--ink-dim);
+    font-size:12px;
+    font-family:'JetBrains Mono',monospace;
+  }
+
+  .gv-tabs{
+    display:flex;
+    gap:2px;
+    padding:0 24px;
+    border-bottom:1px solid var(--line);
+    overflow-x:auto;
+    background:var(--panel);
+  }
+  .gv-tab{
+    padding:12px 14px;
+    font-size:13px;
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    color:var(--ink-dim);
+    background:none;
+    border:none;
+    border-bottom:2px solid transparent;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .gv-tab.active{
+    color:var(--accent);
+    border-bottom-color:var(--accent);
+  }
+  .gv-tab:hover:not(.active){color:var(--ink);}
+
+  .gv-main{
+    padding:20px 24px 60px;
+    max-width:920px;
+    width:100%;
+    margin:0 auto;
+    flex:1;
+  }
+
+  .gv-grid{display:grid; gap:14px;}
+  .gv-grid.cols-2{grid-template-columns:1fr 1fr;}
+  @media (max-width:640px){.gv-grid.cols-2{grid-template-columns:1fr;}}
+
+  .gv-card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:16px;
+  }
+  .gv-card h2{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:14px;
+    font-weight:700;
+    margin:0 0 10px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--ink-dim);
+  }
+
+  .gv-deadline-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:8px 0;
+    border-bottom:1px solid var(--line);
+    gap:10px;
+  }
+  .gv-deadline-row:last-child{border-bottom:none;}
+  .gv-deadline-name{font-size:13.5px; font-weight:500;}
+  .gv-deadline-sub{font-size:11px; color:var(--ink-dim); font-family:'JetBrains Mono',monospace;}
+  .gv-pill{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    padding:3px 8px;
+    border-radius:999px;
+    white-space:nowrap;
+    font-weight:700;
+  }
+  .gv-pill.crit{background:rgba(193,102,107,0.15); color:var(--crit);}
+  .gv-pill.warn{background:rgba(217,142,74,0.15); color:var(--warn);}
+  .gv-pill.ok{background:rgba(127,174,122,0.15); color:var(--ok);}
+
+  .gv-bar-track{
+    height:6px;
+    background:var(--panel-2);
+    border-radius:3px;
+    overflow:hidden;
+    margin-top:6px;
+  }
+  .gv-bar-fill{height:100%; background:var(--accent); border-radius:3px;}
+
+  .gv-list-item{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    padding:9px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .gv-list-item:last-child{border-bottom:none;}
+  .gv-check{
+    width:18px; height:18px;
+    border:1.5px solid var(--ink-dim);
+    border-radius:4px;
+    flex-shrink:0;
+    margin-top:1px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:12px;
+    color:var(--bg);
+  }
+  .gv-check.done{background:var(--accent); border-color:var(--accent);}
+  .gv-item-text{flex:1; font-size:13.5px; line-height:1.4;}
+  .gv-item-text.done{color:var(--ink-dim); text-decoration:line-through;}
+  .gv-item-meta{font-size:11px; color:var(--ink-dim); font-family:'JetBrains Mono',monospace; margin-top:2px;}
+  .gv-del{
+    background:none; border:none; color:var(--ink-dim); cursor:pointer;
+    font-size:15px; padding:0 4px; line-height:1;
+  }
+  .gv-del:hover{color:var(--crit);}
+
+  .gv-add-row{
+    display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;
+  }
+  .gv-input, .gv-select{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--ink);
+    border-radius:6px;
+    padding:8px 10px;
+    font-size:13px;
+    font-family:'Inter',sans-serif;
+    flex:1;
+    min-width:120px;
+  }
+  .gv-input:focus, .gv-select:focus{outline:1.5px solid var(--accent); border-color:var(--accent);}
+  .gv-btn{
+    background:var(--accent);
+    color:var(--bg);
+    border:none;
+    border-radius:6px;
+    padding:8px 14px;
+    font-size:13px;
+    font-weight:700;
+    font-family:'Space Grotesk',sans-serif;
+    cursor:pointer;
+  }
+  .gv-btn:hover{background:var(--accent-dim); color:var(--ink);}
+  .gv-btn.ghost{background:none; border:1px solid var(--line); color:var(--ink-dim);}
+  .gv-btn.ghost:hover{border-color:var(--accent); color:var(--accent);}
+
+  .gv-section-title{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:16px;
+    font-weight:700;
+    margin:22px 0 10px;
+  }
+  .gv-section-title:first-child{margin-top:0;}
+
+  .gv-metric{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 0; border-bottom:1px solid var(--line);
+  }
+  .gv-metric:last-child{border-bottom:none;}
+  .gv-metric-name{font-size:13.5px; font-weight:500;}
+  .gv-metric-hist{font-size:10.5px; color:var(--ink-dim); font-family:'JetBrains Mono',monospace;}
+  .gv-metric-val{font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:700; color:var(--accent);}
+
+  .gv-empty{color:var(--ink-dim); font-size:13px; font-style:italic; padding:6px 0;}
+
+  .gv-day-tabs{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;}
+  .gv-day-chip{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    padding:6px 10px;
+    border-radius:6px;
+    border:1px solid var(--line);
+    background:var(--panel-2);
+    color:var(--ink-dim);
+    cursor:pointer;
+  }
+  .gv-day-chip.active{border-color:var(--accent); color:var(--accent);}
+  .gv-day-chip.done-all{color:var(--ok); border-color:var(--ok);}
+
+  .gv-clickable{cursor:pointer; transition:border-color .15s;}
+  .gv-clickable:hover{border-color:var(--accent);}
+
+  .gv-back{
+    background:none; border:none; color:var(--accent);
+    font-family:'JetBrains Mono',monospace; font-size:12px;
+    cursor:pointer; padding:0 0 14px; display:flex; align-items:center; gap:6px;
+  }
+  .gv-back:hover{text-decoration:underline;}
+
+  .gv-detail-title{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:22px; font-weight:700; margin:0 0 4px;
+  }
+  .gv-detail-type{
+    font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-dim);
+    text-transform:uppercase; letter-spacing:0.06em;
+  }
+
+  .gv-textarea{
+    background:var(--panel-2); border:1px solid var(--line); color:var(--ink);
+    border-radius:6px; padding:10px; font-size:13px; font-family:'Inter',sans-serif;
+    width:100%; min-height:70px; resize:vertical;
+  }
+  .gv-textarea:focus{outline:1.5px solid var(--accent); border-color:var(--accent);}
+
+  .gv-note{
+    padding:8px 0; border-bottom:1px solid var(--line); font-size:13px; line-height:1.4;
+  }
+  .gv-note:last-child{border-bottom:none;}
+  .gv-note-date{font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--ink-dim); display:block; margin-bottom:2px;}
+
+  .gv-method-step{
+    display:flex; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); align-items:flex-start;
+  }
+  .gv-method-step:last-child{border-bottom:none;}
+  .gv-method-time{
+    font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700;
+    color:var(--accent); min-width:56px; flex-shrink:0;
+  }
+  .gv-method-body b{color:var(--ink); font-size:13px;}
+  .gv-method-body div{font-size:12.5px; color:var(--ink-dim); margin-top:2px; line-height:1.4;}
+
+  .gv-error-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px; margin-bottom:10px;
+  }
+  .gv-error-head{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
+  .gv-error-field{font-size:12.5px; margin-top:4px;}
+  .gv-error-field b{color:var(--ink-dim); font-weight:600;}
+  .gv-rev-row{display:flex; gap:14px; margin-top:8px; flex-wrap:wrap;}
+  .gv-rev-item{display:flex; align-items:center; gap:5px; font-size:11.5px; color:var(--ink-dim); font-family:'JetBrains Mono',monospace;}
+  .gv-rev-item .gv-check{width:15px; height:15px;}
+
+  .gv-chat-msg{
+    padding:12px; border-radius:8px; margin-bottom:10px; font-size:13px; line-height:1.5;
+    white-space:pre-wrap;
+  }
+  .gv-chat-msg.user{background:var(--panel-2); border:1px solid var(--line);}
+  .gv-chat-msg.ai{background:rgba(91,154,163,0.08); border:1px solid var(--accent-dim);}
+  .gv-chat-msg.error{background:rgba(193,102,107,0.1); border:1px solid var(--crit); color:var(--crit);}
+  .gv-loading{
+    display:flex; align-items:center; gap:8px; color:var(--ink-dim); font-size:12.5px;
+    font-family:'JetBrains Mono',monospace; padding:8px 0;
+  }
+  .gv-dot{width:6px; height:6px; border-radius:50%; background:var(--accent); animation:gv-pulse 1s infinite ease-in-out;}
+  .gv-dot:nth-child(2){animation-delay:.15s;} .gv-dot:nth-child(3){animation-delay:.3s;}
+  @keyframes gv-pulse{0%,100%{opacity:.3;} 50%{opacity:1;}}
+</style>
+
+<div id="gv-root">
+  <div class="gv-header">
+    <div>
+      <h1>PAINEL — MIGUEL</h1>
+      <div class="gv-sub" id="gv-today"></div>
+    </div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <div class="gv-sub" id="gv-status">carregando...</div>
+      <button class="gv-btn ghost" id="gv-sync-refresh" style="padding:4px 10px; font-size:11px; display:none;">↻ Atualizar</button>
+    </div>
+  </div>
+
+  <div class="gv-tabs" id="gv-tabs"></div>
+  <div class="gv-main" id="gv-main"></div>
+</div>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'gv-dashboard-v1';
+
+  // ==== SINCRONIZAÇÃO ENTRE APARELHOS (opcional) ====
+  // Usa um Gist secreto do GitHub como "banco de dados" — já que você vai
+  // ter conta no GitHub de qualquer jeito pra hospedar o site.
+  // 1. Vá em https://github.com/settings/tokens -> "Generate new token (classic)"
+  //    marque só a permissão "gist" -> gere e copie o token.
+  // 2. Vá em https://gist.github.com -> crie um gist SECRETO com um arquivo
+  //    chamado data.json e conteúdo {} -> copie o ID do gist (fica na URL).
+  // 3. Cole os dois valores abaixo. Deixe vazio pra usar só localmente.
+  const SYNC_CONFIG = {
+    token: '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',
+    gistId: 'fb66842b6db57d3d84f74935cf20b99b',
+  };
+  const SYNC_ENABLED = !!(SYNC_CONFIG.token && SYNC_CONFIG.gistId);
+
+  const DAY_MS = 86400000;
+  function todayISO(){ return new Date().toISOString().slice(0,10); }
+  function daysUntil(dateStr){
+    const now = new Date(todayISO()+'T00:00:00');
+    const target = new Date(dateStr+'T00:00:00');
+    return Math.round((target - now) / DAY_MS);
+  }
+  function fmtDate(dateStr){
+    const d = new Date(dateStr+'T00:00:00');
+    return d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric'});
+  }
+  function uid(){ return Math.random().toString(36).slice(2,10); }
+
+  function dueReviews(e){
+    const created = new Date(e.date+'T00:00:00');
+    const today = new Date(todayISO()+'T00:00:00');
+    const diffDays = Math.round((today-created)/DAY_MS);
+    const targets = [{key:'rev1', day:1, label:'D+1'}, {key:'rev3', day:3, label:'D+3'}, {key:'rev7', day:7, label:'D+7'}];
+    return targets.filter(t => !e[t.key] && diffDays >= t.day);
+  }
+  function allDueReviews(){
+    let out = [];
+    state.errorLog.forEach(e=>{
+      const due = dueReviews(e);
+      if(due.length) out.push({error:e, due});
+    });
+    return out;
+  }
+  function compileContext(){
+    const today = todayWeekday();
+    const todayItems = state.weeklyRoutine[today] || [];
+    const todayLog = state.routineLog[todayISO()] || {};
+    const routineDone = todayItems.filter(it=>todayLog[it.id]).length;
+
+    const subjectsSummary = state.subjects.map(s=>{
+      const doneT = (s.topicsDone||[]).filter(Boolean).length;
+      return `- ${s.name} (${s.label}${s.deadline?`, prazo ${fmtDate(s.deadline)}`:', sem prazo confirmado'}): ${doneT}/${s.topics.length} tópicos revisados`;
+    }).join('\n');
+
+    const due = allDueReviews();
+    const dueSummary = due.length ? due.map(({error:e,due:d})=>`- ${e.materia}: "${e.questao||'sem descrição'}" (${d.map(x=>x.label).join(', ')})`).join('\n') : 'Nenhuma pendente hoje.';
+
+    const goalsSummary = state.goals.map(g=>`- [${g.type}] ${g.title}: ${g.progress}%`).join('\n');
+
+    const recDay = state.recoveryDays[activeRecoveryDay];
+    const recSummary = recDay ? `${recDay.day}: ${recDay.tasks.map(t=>`${t.done?'[feito]':'[pendente]'} ${t.text}`).join('; ')}` : 'sem plano cadastrado';
+
+    return `Hoje é ${today}, ${fmtDate(todayISO())}.
+
+ROTINA DE HOJE: ${routineDone}/${todayItems.length} concluídos. Itens: ${todayItems.map(i=>`${todayLog[i.id]?'[feito]':'[pendente]'} ${i.text}`).join('; ')}
+
+MATÉRIAS E PRAZOS:
+${subjectsSummary}
+
+REVISÕES PENDENTES (Caderno de Erros, método D+1/D+3/D+7):
+${dueSummary}
+
+METAS E PROJETOS:
+${goalsSummary}
+
+RECUPERAÇÃO — DIA ATIVO: ${recSummary}`;
+  }
+
+  function sparkline(history){
+    if(!history || history.length<2) return '';
+    const w=180, h=32, pad=3;
+    const vals = history.map(p=>p.value);
+    const min = Math.min(...vals), max = Math.max(...vals);
+    const range = (max-min)||1;
+    const step = (w-pad*2)/(history.length-1);
+    const pts = history.map((p,i)=>{
+      const x = pad + i*step;
+      const y = h - pad - ((p.value-min)/range)*(h-pad*2);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block;">
+      <polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    </svg>`;
+  }
+
+  const DEFAULT_STATE = {
+    weeklyRoutine: {
+      'Segunda': [
+        {id: uid(), text:'Escovar os dentes (manhã)'},
+        {id: uid(), text:'Tomar banho'},
+        {id: uid(), text:'Se trocar e arrumar o uniforme'},
+        {id: uid(), text:'Café da manhã'},
+        {id: uid(), text:'Arrumar a mochila antes de sair'},
+        {id: uid(), text:'Escovar os dentes (noite)'},
+        {id: uid(), text:'Arrumar o quarto'},
+        {id: uid(), text:'Preparar o que é preciso pra amanhã (roupa, material)'},
+        {id: uid(), text:'Dormir em horário razoável'},
+      ],
+      'Terça': [
+        {id: uid(), text:'Escovar os dentes (manhã)'},
+        {id: uid(), text:'Tomar banho'},
+        {id: uid(), text:'Se trocar e arrumar o uniforme'},
+        {id: uid(), text:'Café da manhã'},
+        {id: uid(), text:'Arrumar a mochila antes de sair'},
+        {id: uid(), text:'Atividade extracurricular (confirmar horário: 14h SUMMIT ou 15h depend. Matemática)'},
+        {id: uid(), text:'Escovar os dentes (noite)'},
+        {id: uid(), text:'Arrumar o quarto'},
+        {id: uid(), text:'Preparar o que é preciso pra amanhã'},
+        {id: uid(), text:'Dormir em horário razoável'},
+      ],
+      'Quarta': [
+        {id: uid(), text:'Escovar os dentes (manhã)'},
+        {id: uid(), text:'Tomar banho'},
+        {id: uid(), text:'Se trocar e arrumar o uniforme'},
+        {id: uid(), text:'Café da manhã'},
+        {id: uid(), text:'Arrumar a mochila antes de sair'},
+        {id: uid(), text:'Escovar os dentes (noite)'},
+        {id: uid(), text:'Arrumar o quarto'},
+        {id: uid(), text:'Preparar o que é preciso pra amanhã'},
+        {id: uid(), text:'Dormir em horário razoável'},
+      ],
+      'Quinta': [
+        {id: uid(), text:'Escovar os dentes (manhã)'},
+        {id: uid(), text:'Tomar banho'},
+        {id: uid(), text:'Se trocar e arrumar o uniforme'},
+        {id: uid(), text:'Café da manhã'},
+        {id: uid(), text:'Arrumar a mochila antes de sair'},
+        {id: uid(), text:'Escovar os dentes (noite)'},
+        {id: uid(), text:'Arrumar o quarto'},
+        {id: uid(), text:'Preparar o que é preciso pra amanhã'},
+        {id: uid(), text:'Dormir em horário razoável'},
+      ],
+      'Sexta': [
+        {id: uid(), text:'Escovar os dentes (manhã)'},
+        {id: uid(), text:'Tomar banho'},
+        {id: uid(), text:'Se trocar e arrumar o uniforme'},
+        {id: uid(), text:'Café da manhã'},
+        {id: uid(), text:'Arrumar a mochila'},
+        {id: uid(), text:'Escovar os dentes (noite)'},
+        {id: uid(), text:'Arrumar o quarto'},
+        {id: uid(), text:'Dormir em horário razoável'},
+      ],
+      'Sábado': [
+        {id: uid(), text:'Escovar os dentes (manhã)'},
+        {id: uid(), text:'Tomar banho'},
+        {id: uid(), text:'Tomar café / almoçar em horário decente'},
+        {id: uid(), text:'Arrumar o quarto'},
+        {id: uid(), text:'Separar roupa da semana seguinte (opcional)'},
+        {id: uid(), text:'Escovar os dentes (noite)'},
+        {id: uid(), text:'Verificar pendências da semana (Bernoulli, prazos)'},
+      ],
+      'Domingo': [
+        {id: uid(), text:'Escovar os dentes (manhã)'},
+        {id: uid(), text:'Tomar banho'},
+        {id: uid(), text:'Tomar café / almoçar em horário decente'},
+        {id: uid(), text:'Arrumar o quarto'},
+        {id: uid(), text:'Preparar tudo pro início da semana (mochila, material, roupa)'},
+        {id: uid(), text:'Escovar os dentes (noite)'},
+        {id: uid(), text:'Dormir cedo — semana começa amanhã'},
+      ],
+    },
+    routineLog: {},
+    goals: [
+      {id: uid(), title:'Recuperação escolar — 2º trimestre', type:'Meta', status:'ativo', progress:10,
+        description:'Passar na recuperação de todas as matérias do 2º trimestre. Provas a partir de segunda (24/08). Diagnóstico feito — agora é execução.',
+        notes:[],
+        checklist:[
+          {id:uid(), text:'Organizar datas das provas por matéria', done:false},
+          {id:uid(), text:'Estudar Matemática (prioridade nº1)', done:false},
+          {id:uid(), text:'Estudar Português', done:false},
+          {id:uid(), text:'Estudar Ciências', done:false},
+          {id:uid(), text:'Estudar História', done:false},
+          {id:uid(), text:'Estudar Geografia', done:false},
+          {id:uid(), text:'Estudar Inglês', done:false},
+          {id:uid(), text:'Entregar AVRP de Artes (vídeo — até 26/08)', done:false},
+          {id:uid(), text:'Rever Redação quando professor postar', done:false},
+        ]},
+      {id: uid(), title:'Final do Void', type:'Projeto', status:'hiato', progress:85,
+        description:'Servidor de RP em Discord em português. Em hiato. Bem concluído no ponto atual — cosmologia, fichas, arcos e bot finalizados. Retomada futura possível.',
+        notes:[],
+        checklist:[
+          {id:uid(), text:'Cosmologia e lore bible documentados', done:true},
+          {id:uid(), text:'Fichas dos personagens principais concluídas', done:true},
+          {id:uid(), text:'Arcos 1–12 resumidos e arquivados', done:true},
+          {id:uid(), text:'Bot de stat tracking no Railway', done:true},
+          {id:uid(), text:'(Hiato — retomar quando quiser)', done:false},
+        ]},
+      {id: uid(), title:'Noclip — RP de entrada', type:'Projeto', status:'ativo', progress:20,
+        description:'RP construído junto com uma amiga (ligado ao livro dela, "Salt and Sigils"). Objetivo: servir como entrada e ambientação para o Five Mine. As pessoas precisam se acostumar ao universo daqui antes de entrar no RPG maior.',
+        notes:[],
+        checklist:[
+          {id:uid(), text:'Definir premissa e setting do Noclip', done:false},
+          {id:uid(), text:'Criar fichas/regras básicas', done:false},
+          {id:uid(), text:'Recrutar jogadores', done:false},
+          {id:uid(), text:'Primeira sessão rodada', done:false},
+          {id:uid(), text:'Avaliar se jogadores estão prontos pro Five Mine', done:false},
+        ]},
+      {id: uid(), title:'Five Mine — RPG', type:'Projeto', status:'aguardando', progress:5,
+        description:'O RPG principal. Em espera até que o Noclip cumpra seu papel de ambientar os jogadores. Não lançar antes de hora.',
+        notes:[],
+        checklist:[
+          {id:uid(), text:'Concluir ambientação via Noclip', done:false},
+          {id:uid(), text:'Definir mecânicas do RPG', done:false},
+          {id:uid(), text:'Construir mundo/lore próprio', done:false},
+          {id:uid(), text:'Lançar primeira sessão', done:false},
+        ]},
+    ],
+    metrics: [
+      {id: uid(), name:'Blocos de estudo cumpridos (semana)', value:0, history:[]},
+      {id: uid(), name:'Palavras ilegíveis (teste de letra)', value:0, history:[]},
+    ],
+    errorLog: [],
+    methodSteps: [
+      {time:'5 min', title:'Recordação da memória', desc:'Caderno fechado. Escreva tudo que lembra do assunto, mesmo incompleto — sem consultar nada.'},
+      {time:'25 min', title:'Questões / produção', desc:'Resolva exercícios ou responda perguntas sem olhar a resposta ou o material.'},
+      {time:'10 min', title:'Correção ativa', desc:'Confira, classifique cada erro (Conceito/Procedimento/Leitura/Atenção) e refaça o que errou sem copiar a solução — depois registre no Caderno de Erros.'},
+    ],
+    recoveryDays: [
+      {day:'Qui 20/08', tasks:[
+        {id:uid(), text:'Matemática — Teorema de Tales + Equação do 2º grau (questões)', done:false},
+        {id:uid(), text:'Português — funções de QUE e SE (exercícios)', done:false},
+      ]},
+      {day:'Sex 21/08', tasks:[
+        {id:uid(), text:'Português — orações subordinadas adjetivas (prazo hoje 22h)', done:false},
+        {id:uid(), text:'Matemática — Semelhança de triângulos', done:false},
+      ]},
+      {day:'Sáb 22/08', tasks:[
+        {id:uid(), text:'Ciências — Genética (1ª e 2ª Lei de Mendel)', done:false},
+        {id:uid(), text:'Geografia — Regionalizando os europeus + climas/biomas', done:false},
+      ]},
+      {day:'Dom 23/08', tasks:[
+        {id:uid(), text:'História — Período Entreguerras (resumo + revisão)', done:false},
+        {id:uid(), text:'Inglês — Modal verbs + Reported Speech', done:false},
+        {id:uid(), text:'Artes — gravar vídeo da AVRP (prazo 26/08)', done:false},
+      ]},
+      {day:'Seg 24/08', tasks:[
+        {id:uid(), text:'Revisão final da matéria da recuperação de hoje', done:false},
+        {id:uid(), text:'PROVA DE RECUPERAÇÃO — matéria 1', done:false},
+      ]},
+    ],
+    subjects: [
+      {id: uid(), name:'Matemática', deadline:'', label:'AVT — data da prova a confirmar',
+        topics:['Teorema de Tales (Vol.1, cap 2B, p.182)','Equação do 2º grau (Vol.2, cap 3A, p.18)','Semelhança de triângulos (Vol.2, cap 3B, p.64)','Relações métricas (Vol.2, cap 3B, p.85)','Trigonometria (Vol.2, cap 4B, p.110)','Juros simples e compostos (Vol.3, cap 4A, p.14)']},
+      {id: uid(), name:'Português', deadline:'', label:'AVT — data da prova a confirmar',
+        topics:['Análise de textos (compreensão/interpretação)','Funções da palavra QUE (p.27, vol.2)','Funções da palavra SE (p.33, vol.2)','Orações subord. adjetivas restritivas/explicativas (p.45, vol.2)','Vírgula na oração adjetiva (p.50, vol.2)','Orações subord. adverbiais (p.107-114, vol.2)']},
+      {id: uid(), name:'Artes', deadline:'2026-08-26', label:'AVRP — Vídeo',
+        topics:['Vídeo-entrevista individual, 30s-1m30s','Tema: bullying/cyberbullying, preconceito OU má uso da tecnologia (escolher 1)','Legenda obrigatória, uniformizado','Estrutura: introdução + 5 perguntas ao entrevistado']},
+      {id: uid(), name:'Ciências', deadline:'', label:'AVT — data da prova a confirmar',
+        topics:['Genética — experimentos de Mendel (p.10-17)','1ª Lei de Mendel — genótipo/fenótipo/dominância (p.14-15)','2ª Lei de Mendel intro (p.16)','Tipos de dominância (p.19)','Heredograma (p.23)','Evolução — Fixismo/Criacionismo, Lamarck/Darwin (p.44-51)','Evidências da evolução (p.54-58)','Tabela periódica (p.80-98)']},
+      {id: uid(), name:'Geografia', deadline:'', label:'AVT — data da prova a confirmar',
+        topics:['Regionalizando os europeus (p.9-11)','Climas e biomas europeus (p.22-27)','Relações do campo (p.30-31)','Rede urbano-industrial europeia (p.31-34)','Infraestrutura de transportes (p.34-35)','População europeia (p.38-41)','Integração econômica europeia (p.44-50)','Europa Central/Oriental (p.69-75)']},
+      {id: uid(), name:'História', deadline:'', label:'AVT — data da prova a confirmar',
+        topics:['Período Entreguerras — reconstrução da Europa, hegemonia dos EUA','Crise do capitalismo — Grande Depressão, New Deal','Ascensão do fascismo (Itália, Alemanha nazista)','2ª Guerra Mundial — origens, expansionismo, Eixo','Blitzkrieg, Pearl Harbor, Operação Barbarossa','Stalingrado, Dia D, bombas atômicas']},
+      {id: uid(), name:'Inglês', deadline:'', label:'AVT — data da prova a confirmar',
+        topics:['Text and comprehension','Modal verbs (p.81,82,88,94)','Reported/Indirect Speech (p.109-112,127)','Reported Question (p.122,123,127)','Say x Tell (p.113)']},
+      {id: uid(), name:'Redação', deadline:'', label:'AVT — data da prova a confirmar',
+        topics:['Conteúdo ainda não postado pelo professor','Foco paralelo: legibilidade da letra, pontuação e acentuação']},
+    ]
+  };
+  DEFAULT_STATE.subjects.forEach(s=>{ s.notes = s.notes || []; });
+
+  const WEEKDAYS = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  function todayWeekday(){ return WEEKDAYS[new Date().getDay()]; }
+
+  let state = null;
+  let activeTab = 'painel';
+  let activeRecoveryDay = 0;
+  let activeRoutineDay = null; // set to todayWeekday() on first render
+  let detailView = null; // {type:'goal'|'subject', id}
+
+  async function cloudGet(){
+    const res = await fetch(`https://api.github.com/gists/${SYNC_CONFIG.gistId}`, {
+      headers: {
+        'Authorization': `token ${SYNC_CONFIG.token}`,
+        'Accept': 'application/vnd.github+json'
+      }
+    });
+    if(!res.ok) throw new Error('cloud get failed: '+res.status);
+    const data = await res.json();
+    const fileContent = data.files && data.files['data.json'] ? data.files['data.json'].content : null;
+    if(!fileContent) return null;
+    return JSON.parse(fileContent);
+  }
+  async function cloudSet(obj){
+    const res = await fetch(`https://api.github.com/gists/${SYNC_CONFIG.gistId}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `token ${SYNC_CONFIG.token}`,
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ files: { 'data.json': { content: JSON.stringify(obj) } } })
+    });
+    if(!res.ok) throw new Error('cloud set failed: '+res.status);
+  }
+
+  function migrateState(){
+    if(!state.errorLog) state.errorLog = [];
+    if(!state.methodSteps) state.methodSteps = DEFAULT_STATE.methodSteps;
+    if(!state.weeklyRoutine) state.weeklyRoutine = DEFAULT_STATE.weeklyRoutine;
+    if(!state.routineLog) state.routineLog = {};
+    (state.goals||[]).forEach(g=>{ if(g.description===undefined) g.description=''; if(!g.notes) g.notes=[]; if(!g.checklist) g.checklist=[]; if(!g.status) g.status='ativo'; });
+    (state.subjects||[]).forEach(s=>{ if(!s.notes) s.notes=[]; });
+  }
+
+  async function loadState(){
+    const statusEl = document.getElementById('gv-status');
+    try{
+      if(SYNC_ENABLED){
+        if(statusEl) statusEl.textContent = 'sincronizando...';
+        try{
+          const cloud = await cloudGet();
+          if(cloud && cloud.subjects){
+            state = cloud;
+          } else {
+            state = DEFAULT_STATE;
+            await cloudSet(state);
+          }
+        }catch(cloudErr){
+          console.error('Falha na nuvem, usando local', cloudErr);
+          const res = await window.storage.get(STORAGE_KEY, false).catch(()=>null);
+          state = (res && res.value) ? JSON.parse(res.value) : DEFAULT_STATE;
+          if(statusEl) statusEl.textContent = 'offline (sem nuvem)';
+        }
+      } else {
+        const res = await window.storage.get(STORAGE_KEY, false);
+        if(res && res.value){
+          state = JSON.parse(res.value);
+        } else {
+          state = DEFAULT_STATE;
+          await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
+        }
+      }
+      migrateState();
+    }catch(e){
+      state = DEFAULT_STATE;
+      migrateState();
+    }
+    if(statusEl) statusEl.textContent = SYNC_ENABLED ? 'sincronizado' : 'somente local';
+    const refreshBtn = document.getElementById('gv-sync-refresh');
+    if(refreshBtn){
+      refreshBtn.style.display = SYNC_ENABLED ? 'inline-block' : 'none';
+      refreshBtn.onclick = ()=>{ loadState(); };
+    }
+    render();
+  }
+
+  let saveTimer = null;
+  async function saveState(){
+    const statusEl = document.getElementById('gv-status');
+    try{
+      if(SYNC_ENABLED){
+        await cloudSet(state);
+        if(statusEl) statusEl.textContent = 'sincronizado';
+      } else {
+        await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
+      }
+    }catch(e){
+      console.error('Erro ao salvar', e);
+      if(statusEl) statusEl.textContent = 'erro ao sincronizar — salvo só local';
+      try{ await window.storage.set(STORAGE_KEY, JSON.stringify(state), false); }catch(e2){}
+    }
+  }
+  function persist(){
+    clearTimeout(saveTimer);
+    const statusEl = document.getElementById('gv-status');
+    if(SYNC_ENABLED && statusEl) statusEl.textContent = 'salvando...';
+    saveTimer = setTimeout(saveState, 600);
+  }
+
+  const TABS = [
+    {id:'painel', label:'Painel'},
+    {id:'rotina', label:'Rotina'},
+    {id:'metas', label:'Metas & Projetos'},
+    {id:'metricas', label:'Métricas'},
+    {id:'recuperacao', label:'Recuperação'},
+    {id:'erros', label:'Caderno de Erros'},
+    {id:'materias', label:'Matérias & Prazos'},
+    {id:'resumo', label:'Resumo'},
+  ];
+
+  function renderTabs(){
+    const el = document.getElementById('gv-tabs');
+    el.innerHTML = TABS.map(t =>
+      `<button class="gv-tab ${activeTab===t.id?'active':''}" data-tab="${t.id}">${t.label}</button>`
+    ).join('');
+    el.querySelectorAll('.gv-tab').forEach(btn=>{
+      btn.onclick = ()=>{ activeTab = btn.dataset.tab; detailView = null; render(); };
+    });
+  }
+
+  function deadlinePill(dateStr){
+    if(!dateStr) return `<span class="gv-pill ok">sem prazo definido</span>`;
+    const d = daysUntil(dateStr);
+    let cls = 'ok';
+    if(d < 0) cls='crit';
+    else if(d <= 2) cls='crit';
+    else if(d <= 5) cls='warn';
+    let txt;
+    if(d < 0) txt = `venceu há ${Math.abs(d)}d`;
+    else if(d === 0) txt = 'hoje';
+    else if(d === 1) txt = 'amanhã';
+    else txt = `em ${d}d`;
+    return `<span class="gv-pill ${cls}">${txt}</span>`;
+  }
+
+  function renderPainel(){
+    const withDeadline = state.subjects.filter(s=>s.deadline).sort((a,b)=> a.deadline.localeCompare(b.deadline));
+    const todayDay = state.recoveryDays[activeRecoveryDay] || state.recoveryDays[0];
+
+    const todayItems = state.weeklyRoutine[todayWeekday()] || [];
+    const todayLog = state.routineLog[todayISO()] || {};
+    const routineDone = todayItems.filter(it=>todayLog[it.id]).length;
+
+    let html = `<div class="gv-grid cols-2">`;
+
+    html += `<div class="gv-card"><h2>Próximos prazos</h2>`;
+    if(withDeadline.length===0){ html += `<div class="gv-empty">Nada com prazo definido ainda.</div>`; }
+    withDeadline.forEach(s=>{
+      html += `<div class="gv-deadline-row">
+        <div>
+          <div class="gv-deadline-name">${s.name} <span class="gv-deadline-sub">· ${s.label}</span></div>
+          <div class="gv-deadline-sub">${fmtDate(s.deadline)}</div>
+        </div>
+        ${deadlinePill(s.deadline)}
+      </div>`;
+    });
+    html += `</div>`;
+
+    html += `<div class="gv-card"><h2>Rotina de hoje — ${todayWeekday()}</h2>`;
+    html += `<div class="gv-bar-track"><div class="gv-bar-fill" style="width:${todayItems.length? Math.round(routineDone/todayItems.length*100):0}%"></div></div>`;
+    html += `<div class="gv-metric-hist" style="margin-top:6px;">${routineDone}/${todayItems.length} concluídos</div>`;
+    html += `</div>`;
+
+    html += `</div>`;
+
+    const due = allDueReviews();
+    html += `<div class="gv-section-title">Revisões pendentes hoje <span class="gv-pill ${due.length?'crit':'ok'}">${due.length}</span></div>`;
+    html += `<div class="gv-card">`;
+    if(due.length===0){
+      html += `<div class="gv-empty">Nenhuma revisão pendente hoje. 🎯</div>`;
+    } else {
+      due.slice(0,8).forEach(({error:e, due:d})=>{
+        html += `<div class="gv-list-item">
+          <div style="flex:1;">
+            <div class="gv-item-text">${e.materia} — ${e.questao||'questão sem descrição'}</div>
+            <div class="gv-item-meta">Revisão ${d.map(x=>x.label).join(', ')}</div>
+          </div>
+          ${d.map(x=>`<button class="gv-btn ghost" data-quick-rev="${e.id}" data-quick-key="${x.key}">Marcar ${x.label}</button>`).join('')}
+        </div>`;
+      });
+    }
+    html += `</div>`;
+
+    html += `<div class="gv-section-title">Recuperação — hoje</div>`;
+    html += `<div class="gv-card">`;
+    if(todayDay){
+      html += `<h2>${todayDay.day}</h2>`;
+      todayDay.tasks.forEach(t=>{
+        html += `<div class="gv-list-item">
+          <div class="gv-check ${t.done?'done':''}" data-recovery-task="${t.id}" data-recovery-day="${activeRecoveryDay}">${t.done?'✓':''}</div>
+          <div class="gv-item-text ${t.done?'done':''}">${t.text}</div>
+        </div>`;
+      });
+    } else {
+      html += `<div class="gv-empty">Nenhum plano de recuperação cadastrado.</div>`;
+    }
+    html += `</div>`;
+
+    document.getElementById('gv-main').innerHTML = html;
+
+    document.querySelectorAll('[data-recovery-task]').forEach(el=>{
+      el.onclick = ()=>{
+        const dayIdx = parseInt(el.dataset.recoveryDay);
+        const task = state.recoveryDays[dayIdx].tasks.find(t=>t.id===el.dataset.recoveryTask);
+        task.done = !task.done;
+        persist(); render();
+      };
+    });
+    document.querySelectorAll('[data-quick-rev]').forEach(el=>{
+      el.onclick = ()=>{
+        const e = state.errorLog.find(x=>x.id===el.dataset.quickRev);
+        e[el.dataset.quickKey] = true;
+        persist(); render();
+      };
+    });
+  }
+
+  function renderRotina(){
+    if(!activeRoutineDay) activeRoutineDay = todayWeekday();
+    const isToday = activeRoutineDay === todayWeekday();
+    const todayLog = state.routineLog[todayISO()] || {};
+    const items = state.weeklyRoutine[activeRoutineDay] || [];
+
+    let html = `<div class="gv-day-tabs">`;
+    WEEKDAYS.forEach(d=>{
+      const isTodayChip = d===todayWeekday();
+      html += `<button class="gv-day-chip ${d===activeRoutineDay?'active':''}" data-routine-day="${d}">${d.slice(0,3)}${isTodayChip?' •hoje':''}</button>`;
+    });
+    html += `</div>`;
+
+    html += `<div class="gv-card"><h2>${activeRoutineDay}${isToday?' — hoje':''}</h2>`;
+    if(!isToday){
+      html += `<div class="gv-item-meta" style="margin-bottom:8px;">Você tá editando o modelo desse dia. As caixinhas só marcam de verdade no dia em que ele realmente acontece.</div>`;
+    }
+    if(items.length===0){ html += `<div class="gv-empty">Nada cadastrado pra esse dia ainda.</div>`; }
+    items.forEach(it=>{
+      const checked = isToday && !!todayLog[it.id];
+      html += `<div class="gv-list-item">
+        <div class="gv-check ${checked?'done':''}" ${isToday?`data-routine-check="${it.id}"`:''} style="${isToday?'':'opacity:.4; cursor:default;'}">${checked?'✓':''}</div>
+        <div class="gv-item-text ${checked?'done':''}">${it.text}</div>
+        <button class="gv-del" data-routine-del="${it.id}">✕</button>
+      </div>`;
+    });
+    html += `<div class="gv-add-row">
+      <input class="gv-input" id="gv-new-routine-text" placeholder="Nova obrigação pra ${activeRoutineDay}...">
+      <button class="gv-btn" id="gv-add-routine">Adicionar</button>
+    </div>`;
+    html += `</div>`;
+    document.getElementById('gv-main').innerHTML = html;
+
+    document.querySelectorAll('[data-routine-day]').forEach(el=>{
+      el.onclick = ()=>{ activeRoutineDay = el.dataset.routineDay; render(); };
+    });
+    document.querySelectorAll('[data-routine-check]').forEach(el=>{
+      el.onclick = ()=>{
+        const key = todayISO();
+        if(!state.routineLog[key]) state.routineLog[key] = {};
+        state.routineLog[key][el.dataset.routineCheck] = !state.routineLog[key][el.dataset.routineCheck];
+        persist(); render();
+      };
+    });
+    document.querySelectorAll('[data-routine-del]').forEach(el=>{
+      el.onclick = ()=>{
+        state.weeklyRoutine[activeRoutineDay] = items.filter(x=>x.id!==el.dataset.routineDel);
+        persist(); render();
+      };
+    });
+    document.getElementById('gv-add-routine').onclick = ()=>{
+      const inp = document.getElementById('gv-new-routine-text');
+      if(!inp.value.trim()) return;
+      state.weeklyRoutine[activeRoutineDay].push({id:uid(), text:inp.value.trim()});
+      persist(); render();
+    };
+  }
+
+  const STATUS_STYLE = {
+    'ativo': 'background:rgba(91,154,163,0.15); color:var(--accent)',
+    'hiato': 'background:rgba(155,155,155,0.15); color:#9aa0ac',
+    'aguardando': 'background:rgba(217,142,74,0.15); color:var(--warn)',
+  };
+
+  function renderMetas(){
+    let html = `<div class="gv-card"><h2>Metas & Projetos</h2>`;
+    if(state.goals.length===0){ html += `<div class="gv-empty">Nada cadastrado ainda.</div>`; }
+    state.goals.forEach(g=>{
+      const cl = g.checklist||[];
+      const clDone = cl.filter(x=>x.done).length;
+      const statusStyle = STATUS_STYLE[g.status] || STATUS_STYLE['ativo'];
+      html += `<div class="gv-clickable" data-open-goal="${g.id}" style="padding:12px 0; border-bottom:1px solid var(--line);">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+          <div>
+            <span class="gv-deadline-name">${g.title}</span>
+            <span class="gv-pill" style="margin-left:8px; ${statusStyle}">${g.type}</span>
+            <span class="gv-pill" style="margin-left:4px; ${statusStyle}">${g.status||'ativo'}</span>
+          </div>
+          <button class="gv-del" data-del-goal="${g.id}">✕</button>
+        </div>
+        <div class="gv-bar-track" style="margin-top:8px;"><div class="gv-bar-fill" style="width:${g.progress}%"></div></div>
+        <div class="gv-item-meta" style="margin-top:4px;">${g.progress}% · ${clDone}/${cl.length} tarefas · ${g.notes.length} nota(s) · toque pra abrir</div>
+      </div>`;
+    });
+    html += `<div class="gv-add-row">
+      <input class="gv-input" id="gv-new-goal-title" placeholder="Nova meta ou projeto...">
+      <select class="gv-select" id="gv-new-goal-type" style="max-width:120px;">
+        <option>Meta</option><option>Projeto</option>
+      </select>
+      <select class="gv-select" id="gv-new-goal-status" style="max-width:140px;">
+        <option value="ativo">Ativo</option><option value="hiato">Hiato</option><option value="aguardando">Aguardando</option>
+      </select>
+      <button class="gv-btn" id="gv-add-goal">+</button>
+    </div>`;
+    html += `</div>`;
+    document.getElementById('gv-main').innerHTML = html;
+
+    document.querySelectorAll('[data-open-goal]').forEach(el=>{
+      el.onclick = (ev)=>{ detailView = {type:'goal', id:el.dataset.openGoal}; render(); };
+    });
+    document.querySelectorAll('[data-del-goal]').forEach(el=>{
+      el.onclick = (ev)=>{ ev.stopPropagation(); state.goals = state.goals.filter(x=>x.id!==el.dataset.delGoal); persist(); render(); };
+    });
+    document.getElementById('gv-add-goal').onclick = ()=>{
+      const titleEl = document.getElementById('gv-new-goal-title');
+      const typeEl = document.getElementById('gv-new-goal-type');
+      const statusEl = document.getElementById('gv-new-goal-status');
+      if(!titleEl.value.trim()) return;
+      state.goals.push({id:uid(), title:titleEl.value.trim(), type:typeEl.value, status:statusEl.value, progress:0, description:'', notes:[], checklist:[]});
+      persist(); render();
+    };
+  }
+
+  function renderGoalDetail(id){
+    const g = state.goals.find(x=>x.id===id);
+    if(!g){ detailView = null; renderMetas(); return; }
+    let html = `<button class="gv-back" id="gv-back-btn">← voltar pra Metas & Projetos</button>`;
+    const statusStyle = STATUS_STYLE[g.status] || STATUS_STYLE['ativo'];
+    html += `<div class="gv-card">
+      <div style="display:flex; gap:8px; align-items:baseline; flex-wrap:wrap;">
+        <div class="gv-detail-type">${g.type}</div>
+        <span class="gv-pill" style="${statusStyle}">${g.status||'ativo'}</span>
+      </div>
+      <div class="gv-detail-title">${g.title}</div>
+      <div class="gv-add-row" style="margin-top:8px;">
+        <select class="gv-select" id="gv-detail-status" style="max-width:150px;">
+          <option value="ativo" ${(g.status||'ativo')==='ativo'?'selected':''}>Ativo</option>
+          <option value="hiato" ${g.status==='hiato'?'selected':''}>Hiato</option>
+          <option value="aguardando" ${g.status==='aguardando'?'selected':''}>Aguardando</option>
+        </select>
+        <button class="gv-btn ghost" id="gv-save-status">Salvar status</button>
+      </div>
+      <div class="gv-bar-track" style="margin-top:10px;"><div class="gv-bar-fill" style="width:${g.progress}%"></div></div>
+      <div class="gv-item-meta" style="margin:6px 0 14px;">
+        <input type="range" min="0" max="100" value="${g.progress}" id="gv-detail-progress" style="width:160px; vertical-align:middle;"> <span id="gv-detail-progress-val">${g.progress}</span>%
+      </div>
+      <h2>Descrição</h2>
+      <textarea class="gv-textarea" id="gv-detail-desc" placeholder="Descreva do que se trata...">${g.description||''}</textarea>
+      <div class="gv-add-row"><button class="gv-btn" id="gv-save-desc">Salvar descrição</button></div>
+    </div>`;
+
+    const cl = g.checklist||[];
+    html += `<div class="gv-card" style="margin-top:14px;"><h2>Checklist — ${cl.filter(x=>x.done).length}/${cl.length} concluídos</h2>`;
+    cl.forEach((item, i)=>{
+      html += `<div class="gv-list-item">
+        <div class="gv-check ${item.done?'done':''}" data-cl-item="${i}">${item.done?'✓':''}</div>
+        <div class="gv-item-text ${item.done?'done':''}">${item.text}</div>
+        <button class="gv-del" data-cl-del="${i}">✕</button>
+      </div>`;
+    });
+    html += `<div class="gv-add-row">
+      <input class="gv-input" id="gv-new-cl-item" placeholder="Nova tarefa / etapa do projeto...">
+      <button class="gv-btn ghost" id="gv-add-cl-item">Adicionar</button>
+    </div></div>`;
+
+    html += `<div class="gv-card" style="margin-top:14px;"><h2>Anotações</h2>`;
+    if(g.notes.length===0){ html += `<div class="gv-empty">Nenhuma anotação ainda.</div>`; }
+    [...g.notes].reverse().forEach(n=>{
+      html += `<div class="gv-note"><span class="gv-note-date">${fmtDate(n.date)}</span>${n.text}</div>`;
+    });
+    html += `<div class="gv-add-row">
+      <input class="gv-input" id="gv-new-goal-note" placeholder="O que avançou, o que travou...">
+      <button class="gv-btn" id="gv-add-goal-note">Adicionar</button>
+    </div></div>`;
+
+    document.getElementById('gv-main').innerHTML = html;
+
+    document.getElementById('gv-back-btn').onclick = ()=>{ detailView = null; render(); };
+    document.getElementById('gv-save-status').onclick = ()=>{
+      g.status = document.getElementById('gv-detail-status').value; persist(); render();
+    };
+    document.getElementById('gv-detail-progress').oninput = ev=>{
+      document.getElementById('gv-detail-progress-val').textContent = ev.target.value;
+    };
+    document.getElementById('gv-detail-progress').onchange = ev=>{ g.progress = parseInt(ev.target.value); persist(); };
+    document.getElementById('gv-save-desc').onclick = ()=>{
+      g.description = document.getElementById('gv-detail-desc').value; persist(); render();
+    };
+    document.querySelectorAll('[data-cl-item]').forEach(el=>{
+      el.onclick = ()=>{ if(!g.checklist) g.checklist=[]; g.checklist[parseInt(el.dataset.clItem)].done = !g.checklist[parseInt(el.dataset.clItem)].done; persist(); render(); };
+    });
+    document.querySelectorAll('[data-cl-del]').forEach(el=>{
+      el.onclick = ()=>{ g.checklist.splice(parseInt(el.dataset.clDel),1); persist(); render(); };
+    });
+    document.getElementById('gv-add-cl-item').onclick = ()=>{
+      const inp = document.getElementById('gv-new-cl-item');
+      if(!inp.value.trim()) return;
+      if(!g.checklist) g.checklist=[];
+      g.checklist.push({id:uid(), text:inp.value.trim(), done:false});
+      persist(); render();
+    };
+    document.getElementById('gv-add-goal-note').onclick = ()=>{
+      const inp = document.getElementById('gv-new-goal-note');
+      if(!inp.value.trim()) return;
+      g.notes.push({date:todayISO(), text:inp.value.trim()}); persist(); render();
+    };
+  }
+
+  function renderMetricas(){
+    let html = `<div class="gv-card"><h2>Métricas</h2>`;
+    if(state.metrics.length===0){ html += `<div class="gv-empty">Nenhuma métrica cadastrada ainda.</div>`; }
+    state.metrics.forEach(m=>{
+      const lastUpdate = m.history.length ? m.history[m.history.length-1].date : null;
+      html += `<div class="gv-metric">
+        <div>
+          <div class="gv-metric-name">${m.name}</div>
+          <div class="gv-metric-hist">${lastUpdate ? 'última atualização: '+fmtDate(lastUpdate) : 'sem histórico ainda'}</div>
+          ${sparkline(m.history)}
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="gv-metric-val">${m.value}</span>
+          <button class="gv-btn ghost" data-bump-metric="${m.id}" data-delta="1">+1</button>
+          <button class="gv-btn ghost" data-bump-metric="${m.id}" data-delta="-1">-1</button>
+          <button class="gv-del" data-del-metric="${m.id}">✕</button>
+        </div>
+      </div>`;
+    });
+    html += `<div class="gv-add-row">
+      <input class="gv-input" id="gv-new-metric-name" placeholder="Nova métrica (ex: horas de sono)...">
+      <button class="gv-btn" id="gv-add-metric">Adicionar</button>
+    </div>`;
+    html += `</div>`;
+    document.getElementById('gv-main').innerHTML = html;
+
+    document.querySelectorAll('[data-bump-metric]').forEach(el=>{
+      el.onclick = ()=>{
+        const m = state.metrics.find(x=>x.id===el.dataset.bumpMetric);
+        m.value += parseInt(el.dataset.delta);
+        m.history.push({date: todayISO(), value: m.value});
+        persist(); render();
+      };
+    });
+    document.querySelectorAll('[data-del-metric]').forEach(el=>{
+      el.onclick = ()=>{
+        state.metrics = state.metrics.filter(x=>x.id!==el.dataset.delMetric);
+        persist(); render();
+      };
+    });
+    document.getElementById('gv-add-metric').onclick = ()=>{
+      const nameEl = document.getElementById('gv-new-metric-name');
+      if(!nameEl.value.trim()) return;
+      state.metrics.push({id:uid(), name:nameEl.value.trim(), value:0, history:[]});
+      persist(); render();
+    };
+  }
+
+  function renderRecuperacao(){
+    let html = `<div class="gv-card"><h2>O método — bloco de 40 min</h2>`;
+    state.methodSteps.forEach(m=>{
+      html += `<div class="gv-method-step">
+        <div class="gv-method-time">${m.time}</div>
+        <div class="gv-method-body"><b>${m.title}</b><div>${m.desc}</div></div>
+      </div>`;
+    });
+    html += `<div class="gv-item-meta" style="margin-top:10px;">Recordar da memória antes de reler, e revisar de novo em D+1/D+3/D+7, retém muito mais que só reler — é por isso que cada erro vira registro no Caderno de Erros.</div>`;
+    html += `</div>`;
+
+    html += `<div class="gv-section-title">Dias até a recuperação</div>`;
+    html += `<div class="gv-day-tabs">`;
+    state.recoveryDays.forEach((d,idx)=>{
+      const allDone = d.tasks.length>0 && d.tasks.every(t=>t.done);
+      html += `<button class="gv-day-chip ${idx===activeRecoveryDay?'active':''} ${allDone?'done-all':''}" data-day-idx="${idx}">${d.day}${allDone?' ✓':''}</button>`;
+    });
+    html += `</div>`;
+    html += `<div class="gv-add-row" style="margin-bottom:14px;">
+      <input class="gv-input" id="gv-new-r2-day-name" placeholder="Nome do novo dia (ex: Ter 25/08)" style="max-width:220px;">
+      <button class="gv-btn ghost" id="gv-add-r2-day">+ novo dia</button>
+    </div>`;
+
+    const day = state.recoveryDays[activeRecoveryDay];
+    html += `<div class="gv-card"><h2>${day ? day.day : ''}</h2>`;
+    if(day){
+      day.tasks.forEach(t=>{
+        html += `<div class="gv-list-item">
+          <div class="gv-check ${t.done?'done':''}" data-r2-task="${t.id}">${t.done?'✓':''}</div>
+          <div class="gv-item-text ${t.done?'done':''}">${t.text}</div>
+          <button class="gv-del" data-r2-del="${t.id}">✕</button>
+        </div>`;
+      });
+      html += `<div class="gv-add-row">
+        <input class="gv-input" id="gv-new-r2-task" placeholder="Nova tarefa pra este dia...">
+        <button class="gv-btn" id="gv-add-r2-task">Adicionar</button>
+      </div>`;
+    }
+    html += `</div>`;
+    document.getElementById('gv-main').innerHTML = html;
+
+    document.querySelectorAll('[data-day-idx]').forEach(el=>{
+      el.onclick = ()=>{ activeRecoveryDay = parseInt(el.dataset.dayIdx); render(); };
+    });
+    document.querySelectorAll('[data-r2-task]').forEach(el=>{
+      el.onclick = ()=>{
+        const t = day.tasks.find(x=>x.id===el.dataset.r2Task);
+        t.done = !t.done; persist(); render();
+      };
+    });
+    document.querySelectorAll('[data-r2-del]').forEach(el=>{
+      el.onclick = ()=>{
+        day.tasks = day.tasks.filter(x=>x.id!==el.dataset.r2Del);
+        persist(); render();
+      };
+    });
+    const addBtn = document.getElementById('gv-add-r2-task');
+    if(addBtn){
+      addBtn.onclick = ()=>{
+        const inp = document.getElementById('gv-new-r2-task');
+        if(!inp.value.trim()) return;
+        day.tasks.push({id:uid(), text:inp.value.trim(), done:false});
+        persist(); render();
+      };
+    }
+    const addDayBtn = document.getElementById('gv-add-r2-day');
+    if(addDayBtn){
+      addDayBtn.onclick = ()=>{
+        const inp = document.getElementById('gv-new-r2-day-name');
+        if(!inp.value.trim()) return;
+        state.recoveryDays.push({day:inp.value.trim(), tasks:[]});
+        activeRecoveryDay = state.recoveryDays.length-1;
+        persist(); render();
+      };
+    }
+  }
+
+  function renderMaterias(){
+    let html = '';
+    state.subjects.forEach(s=>{
+      const doneCount = (s.topicsDone||[]).filter(Boolean).length;
+      const pending = state.errorLog.filter(e=>e.materia===s.name && dueReviews(e).length>0).length;
+      html += `<div class="gv-card gv-clickable" data-open-subj="${s.id}" style="margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+          <h2 style="margin-bottom:2px;">${s.name} <span style="color:var(--ink-dim); text-transform:none; font-weight:500;">— ${s.label}</span></h2>
+          ${s.deadline ? deadlinePill(s.deadline) : `<span class="gv-pill ok">sem prazo</span>`}
+        </div>
+        ${s.deadline ? `<div class="gv-deadline-sub">${fmtDate(s.deadline)}</div>` : ''}
+        <div class="gv-item-meta" style="margin-top:8px;">${doneCount}/${s.topics.length} tópicos revisados · ${(s.notes||[]).length} anotação(ões)${pending ? ` · <span style="color:var(--crit); font-weight:700;">${pending} revisão(ões) pendente(s)</span>` : ''} · clique pra abrir</div>
+      </div>`;
+    });
+    html += `<div class="gv-card"><h2>Nova matéria / trabalho</h2>
+      <div class="gv-add-row">
+        <input class="gv-input" id="gv-new-subj-name" placeholder="Nome da matéria/trabalho">
+        <input class="gv-input" id="gv-new-subj-label" placeholder="Tipo (ex: AVT, AVRP)" style="max-width:140px;">
+      </div>
+      <div class="gv-add-row">
+        <input class="gv-input" type="date" id="gv-new-subj-deadline" style="max-width:180px;">
+        <button class="gv-btn" id="gv-add-subj">Adicionar</button>
+      </div>
+    </div>`;
+    document.getElementById('gv-main').innerHTML = html;
+
+    document.getElementById('gv-add-subj').onclick = ()=>{
+      const nameEl = document.getElementById('gv-new-subj-name');
+      const labelEl = document.getElementById('gv-new-subj-label');
+      const dlEl = document.getElementById('gv-new-subj-deadline');
+      if(!nameEl.value.trim()) return;
+      state.subjects.push({id:uid(), name:nameEl.value.trim(), label:labelEl.value.trim()||'AVT', deadline:dlEl.value||'', topics:[], notes:[]});
+      persist(); render();
+    };
+
+    document.querySelectorAll('[data-open-subj]').forEach(el=>{
+      el.onclick = ()=>{
+        detailView = {type:'subject', id:el.dataset.openSubj};
+        render();
+      };
+    });
+  }
+
+  function renderSubjectDetail(id){
+    const s = state.subjects.find(x=>x.id===id);
+    if(!s){ detailView = null; renderMaterias(); return; }
+    if(!s.notes) s.notes = [];
+    let html = `<button class="gv-back" id="gv-back-btn">← voltar pra Matérias & Prazos</button>`;
+    html += `<div class="gv-card">
+      <div class="gv-detail-type">${s.label}</div>
+      <div class="gv-detail-title">${s.name}</div>
+      ${s.deadline ? `<div style="margin:6px 0 4px;">${deadlinePill(s.deadline)} <span class="gv-deadline-sub">${fmtDate(s.deadline)}</span></div>` : `<div class="gv-deadline-sub">sem prazo definido ainda</div>`}
+      <div class="gv-add-row">
+        <input class="gv-input" type="date" id="gv-detail-deadline" value="${s.deadline||''}" style="max-width:180px;">
+        <button class="gv-btn ghost" id="gv-save-deadline">Salvar prazo</button>
+        <button class="gv-btn ghost" id="gv-clear-deadline">Limpar prazo</button>
+      </div>
+    </div>`;
+
+    html += `<div class="gv-card" style="margin-top:14px;"><h2>Conteúdo — checklist</h2>`;
+    s.topics.forEach((topic,i)=>{
+      html += `<div class="gv-list-item">
+        <div class="gv-check ${s.topicsDone && s.topicsDone[i] ? 'done':''}" data-subj-topic="${i}">${s.topicsDone && s.topicsDone[i] ? '✓':''}</div>
+        <div class="gv-item-text ${s.topicsDone && s.topicsDone[i] ? 'done':''}">${topic}</div>
+      </div>`;
+    });
+    html += `<div class="gv-add-row">
+      <input class="gv-input" id="gv-new-topic" placeholder="Adicionar tópico ao conteúdo...">
+      <button class="gv-btn ghost" id="gv-add-topic">Adicionar</button>
+    </div>`;
+    html += `</div>`;
+
+    const linkedErrors = state.errorLog.filter(e=>e.materia===s.name);
+    const linkedPending = linkedErrors.filter(e=>dueReviews(e).length>0);
+    html += `<div class="gv-card" style="margin-top:14px;"><h2>Caderno de Erros — ${s.name}</h2>`;
+    if(linkedErrors.length===0){
+      html += `<div class="gv-empty">Nenhum erro registrado ainda pra essa matéria.</div>`;
+    } else {
+      html += `<div class="gv-item-meta" style="margin-bottom:8px;">${linkedErrors.length} erro(s) registrado(s) · ${linkedPending.length} com revisão pendente hoje</div>`;
+      linkedPending.forEach(e=>{
+        const d = dueReviews(e);
+        html += `<div class="gv-list-item"><div class="gv-item-text">${e.questao||'questão sem descrição'} <span class="gv-item-meta">— revisão ${d.map(x=>x.label).join(', ')}</span></div></div>`;
+      });
+    }
+    html += `</div>`;
+
+    html += `<div class="gv-card" style="margin-top:14px;"><h2>Anotações</h2>`;
+    if(s.notes.length===0){ html += `<div class="gv-empty">Nenhuma anotação ainda.</div>`; }
+    [...s.notes].reverse().forEach(n=>{
+      html += `<div class="gv-note"><span class="gv-note-date">${fmtDate(n.date)}</span>${n.text}</div>`;
+    });
+    html += `<div class="gv-add-row">
+      <input class="gv-input" id="gv-new-subj-note" placeholder="O que travou, dúvida, o que rever de novo...">
+      <button class="gv-btn" id="gv-add-subj-note">Adicionar</button>
+    </div></div>`;
+
+    html += `<div class="gv-add-row"><button class="gv-btn ghost" id="gv-del-subj" style="border-color:var(--crit); color:var(--crit);">Excluir matéria</button></div>`;
+
+    document.getElementById('gv-main').innerHTML = html;
+    document.getElementById('gv-del-subj').onclick = ()=>{
+      state.subjects = state.subjects.filter(x=>x.id!==s.id);
+      detailView = null; persist(); render();
+    };
+    document.getElementById('gv-back-btn').onclick = ()=>{ detailView = null; render(); };
+    document.getElementById('gv-save-deadline').onclick = ()=>{
+      s.deadline = document.getElementById('gv-detail-deadline').value || '';
+      persist(); render();
+    };
+    document.getElementById('gv-clear-deadline').onclick = ()=>{
+      s.deadline = '';
+      persist(); render();
+    };
+    document.getElementById('gv-add-topic').onclick = ()=>{
+      const inp = document.getElementById('gv-new-topic');
+      if(!inp.value.trim()) return;
+      s.topics.push(inp.value.trim());
+      persist(); render();
+    };
+    document.querySelectorAll('[data-subj-topic]').forEach(el=>{
+      el.onclick = ()=>{
+        const idx = parseInt(el.dataset.subjTopic);
+        if(!s.topicsDone) s.topicsDone = [];
+        s.topicsDone[idx] = !s.topicsDone[idx];
+        persist(); render();
+      };
+    });
+    document.getElementById('gv-add-subj-note').onclick = ()=>{
+      const inp = document.getElementById('gv-new-subj-note');
+      if(!inp.value.trim()) return;
+      s.notes.push({date:todayISO(), text:inp.value.trim()});
+      persist(); render();
+    };
+  }
+
+  function buildResumoText(){
+    const today = todayWeekday();
+    const todayItems = state.weeklyRoutine[today] || [];
+    const todayLog = state.routineLog[todayISO()] || {};
+    const routineDone = todayItems.filter(it=>todayLog[it.id]).length;
+    const routinePending = todayItems.filter(it=>!todayLog[it.id]).map(it=>it.text);
+
+    const withDeadline = state.subjects.filter(s=>s.deadline).sort((a,b)=>a.deadline.localeCompare(b.deadline));
+    const withoutDeadline = state.subjects.filter(s=>!s.deadline);
+
+    const due = allDueReviews();
+
+    const recDay = state.recoveryDays[activeRecoveryDay];
+    const recPending = recDay ? recDay.tasks.filter(t=>!t.done).map(t=>t.text) : [];
+
+    let lines = [];
+    lines.push(`RESUMO — ${today}, ${fmtDate(todayISO())}`);
+    lines.push('');
+    lines.push(`ROTINA DE HOJE: ${routineDone}/${todayItems.length} feitos`);
+    if(routinePending.length) lines.push('Pendente: ' + routinePending.join('; '));
+    lines.push('');
+    lines.push('PRAZOS CONFIRMADOS:');
+    if(withDeadline.length===0) lines.push('(nenhum confirmado ainda)');
+    withDeadline.forEach(s=>lines.push(`- ${s.name} (${s.label}) — ${fmtDate(s.deadline)} (${daysUntil(s.deadline)>=0?`em ${daysUntil(s.deadline)}d`:`atrasado ${Math.abs(daysUntil(s.deadline))}d`})`));
+    if(withoutDeadline.length){
+      lines.push('');
+      lines.push('SEM DATA CONFIRMADA: ' + withoutDeadline.map(s=>s.name).join(', '));
+    }
+    lines.push('');
+    lines.push(`REVISÕES PENDENTES HOJE (Caderno de Erros): ${due.length}`);
+    due.forEach(({error:e, due:d})=>lines.push(`- ${e.materia}: "${e.questao||'sem descrição'}" — ${d.map(x=>x.label).join(', ')}`));
+    lines.push('');
+    lines.push(`RECUPERAÇÃO — ${recDay ? recDay.day : 'sem dia selecionado'}: ${recPending.length} tarefa(s) pendente(s)`);
+    recPending.forEach(t=>lines.push(`- ${t}`));
+    lines.push('');
+    lines.push('METAS E PROJETOS:');
+    state.goals.forEach(g=>lines.push(`- [${g.type}] ${g.title}: ${g.progress}%`));
+
+    return lines.join('\n');
+  }
+
+  function renderResumo(){
+    const text = buildResumoText();
+    let html = `<div class="gv-card"><h2>Resumo mecânico</h2>
+      <div style="font-size:12.5px; color:var(--ink-dim); line-height:1.5; margin-bottom:10px;">
+        Gera um texto com a situação atual do painel — sem IA, só compilando os dados que já estão aqui. Copia e cola aqui no chat quando quiser minha ajuda.
+      </div>
+      <div class="gv-add-row"><button class="gv-btn" id="gv-copy-resumo">Copiar resumo</button></div>
+      <textarea class="gv-textarea" id="gv-resumo-text" readonly style="min-height:320px; margin-top:12px; font-family:'JetBrains Mono',monospace; font-size:12px;">${text}</textarea>
+    </div>`;
+    document.getElementById('gv-main').innerHTML = html;
+
+    document.getElementById('gv-copy-resumo').onclick = async ()=>{
+      const btn = document.getElementById('gv-copy-resumo');
+      try{
+        await navigator.clipboard.writeText(text);
+        btn.textContent = 'Copiado ✓';
+      }catch(e){
+        document.getElementById('gv-resumo-text').select();
+        document.execCommand('copy');
+        btn.textContent = 'Copiado ✓';
+      }
+      setTimeout(()=>{ btn.textContent = 'Copiar resumo'; }, 1500);
+    };
+  }
+
+  function renderErros(){
+    let html = `<div class="gv-card"><h2>Como usar o Caderno de Erros</h2>
+      <div style="font-size:12.5px; color:var(--ink-dim); line-height:1.5;">
+        Cada erro vira um registro: matéria, questão, tipo de erro e a regra que faltou. Depois de refazer sem olhar, marque as revisões D+1, D+3 e D+7 — revisar nesses intervalos é o que faz o conteúdo grudar de verdade.
+      </div></div>`;
+
+    html += `<div class="gv-card" style="margin-top:14px;"><h2>Novo erro</h2>
+      <div class="gv-add-row">
+        <select class="gv-select" id="gv-err-materia">
+          ${state.subjects.map(s=>`<option value="${s.name}">${s.name}</option>`).join('')}
+        </select>
+        <input class="gv-input" id="gv-err-questao" placeholder="Questão">
+      </div>
+      <div class="gv-add-row">
+        <select class="gv-select" id="gv-err-tipo">
+          <option value="C">C — Conceito</option>
+          <option value="P">P — Procedimento</option>
+          <option value="L">L — Leitura</option>
+          <option value="A">A — Atenção</option>
+        </select>
+        <input class="gv-input" id="gv-err-regra" placeholder="Regra/conteúdo que faltou">
+      </div>
+      <div class="gv-add-row"><button class="gv-btn" id="gv-add-err">Registrar erro</button></div>
+    </div>`;
+
+    html += `<div class="gv-section-title">Erros registrados</div>`;
+    if(state.errorLog.length===0){ html += `<div class="gv-empty">Nenhum erro registrado ainda.</div>`; }
+    [...state.errorLog].reverse().forEach(e=>{
+      const tipoLabel = {C:'Conceito', P:'Procedimento', L:'Leitura', A:'Atenção'}[e.tipo] || e.tipo;
+      html += `<div class="gv-error-card">
+        <div class="gv-error-head">
+          <div>
+            <span class="gv-deadline-name">${e.materia}</span>
+            <span class="gv-pill warn" style="margin-left:8px;">${tipoLabel}</span>
+          </div>
+          <button class="gv-del" data-del-err="${e.id}">✕</button>
+        </div>
+        <div class="gv-error-field"><b>Questão:</b> ${e.questao||'—'}</div>
+        <div class="gv-error-field"><b>Regra que faltou:</b> ${e.regra||'—'}</div>
+        <div class="gv-error-field"><b>Refeito sem olhar:</b>
+          <span class="gv-check ${e.refeito?'done':''}" data-err-refeito="${e.id}" style="display:inline-flex; width:14px; height:14px; vertical-align:middle; margin-left:4px;">${e.refeito?'✓':''}</span>
+        </div>
+        <div class="gv-rev-row">
+          <div class="gv-rev-item"><span class="gv-check ${e.rev1?'done':''}" data-err-rev="${e.id}" data-rev-key="rev1">${e.rev1?'✓':''}</span> D+1</div>
+          <div class="gv-rev-item"><span class="gv-check ${e.rev3?'done':''}" data-err-rev="${e.id}" data-rev-key="rev3">${e.rev3?'✓':''}</span> D+3</div>
+          <div class="gv-rev-item"><span class="gv-check ${e.rev7?'done':''}" data-err-rev="${e.id}" data-rev-key="rev7">${e.rev7?'✓':''}</span> D+7</div>
+        </div>
+      </div>`;
+    });
+    document.getElementById('gv-main').innerHTML = html;
+
+    document.getElementById('gv-add-err').onclick = ()=>{
+      const materia = document.getElementById('gv-err-materia').value;
+      const questao = document.getElementById('gv-err-questao').value.trim();
+      const tipo = document.getElementById('gv-err-tipo').value;
+      const regra = document.getElementById('gv-err-regra').value.trim();
+      if(!materia) return;
+      state.errorLog.push({id:uid(), materia, questao, tipo, regra, refeito:false, rev1:false, rev3:false, rev7:false, date:todayISO()});
+      persist(); render();
+    };
+    document.querySelectorAll('[data-del-err]').forEach(el=>{
+      el.onclick = ()=>{
+        state.errorLog = state.errorLog.filter(x=>x.id!==el.dataset.delErr);
+        persist(); render();
+      };
+    });
+    document.querySelectorAll('[data-err-refeito]').forEach(el=>{
+      el.onclick = ()=>{
+        const e = state.errorLog.find(x=>x.id===el.dataset.errRefeito);
+        e.refeito = !e.refeito; persist(); render();
+      };
+    });
+    document.querySelectorAll('[data-err-rev]').forEach(el=>{
+      el.onclick = ()=>{
+        const e = state.errorLog.find(x=>x.id===el.dataset.errRev);
+        const key = el.dataset.revKey;
+        e[key] = !e[key]; persist(); render();
+      };
+    });
+  }
+
+  function render(){
+    renderTabs();
+    document.getElementById('gv-today').textContent = new Date().toLocaleDateString('pt-BR', {weekday:'long', day:'2-digit', month:'long'});
+    if(activeTab==='metas' && detailView && detailView.type==='goal') renderGoalDetail(detailView.id);
+    else if(activeTab==='materias' && detailView && detailView.type==='subject') renderSubjectDetail(detailView.id);
+    else if(activeTab==='painel') renderPainel();
+    else if(activeTab==='rotina') renderRotina();
+    else if(activeTab==='metas') renderMetas();
+    else if(activeTab==='metricas') renderMetricas();
+    else if(activeTab==='recuperacao') renderRecuperacao();
+    else if(activeTab==='erros') renderErros();
+    else if(activeTab==='materias') renderMaterias();
+    else if(activeTab==='resumo') renderResumo();
+  }
+
+  loadState();
+})();
+</script>
+
+<script>
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', ()=>{
+      navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+    });
+  }
+</script>
+</body>
+</html>
