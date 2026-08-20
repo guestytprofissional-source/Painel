@@ -1223,6 +1223,13 @@ RECUPERAÇÃO — DIA ATIVO: ${recSummary}`;
     html += `<div class="gv-item-meta" style="margin-top:10px;">Recordar da memória antes de reler, e revisar de novo em D+1/D+3/D+7, retém muito mais que só reler — é por isso que cada erro vira registro no Caderno de Erros.</div>`;
     html += `</div>`;
 
+    html += `<div class="gv-card" style="margin-top:14px;"><h2>Gerar plano dos 9 dias</h2>
+      <div class="gv-item-meta" style="margin-bottom:10px;">
+        Monta os dias automaticamente na ordem Português → Ciências → Geografia → Matemática → História → Inglês → Redação, usando o conteúdo que já tá em Matérias & Prazos. <b>Isso substitui os dias atuais.</b>
+      </div>
+      <button class="gv-btn" id="gv-generate-plan">Gerar plano agora</button>
+    </div>`;
+
     html += `<div class="gv-section-title">Dias até a recuperação</div>`;
     html += `<div class="gv-day-tabs">`;
     state.recoveryDays.forEach((d,idx)=>{
@@ -1284,6 +1291,37 @@ RECUPERAÇÃO — DIA ATIVO: ${recSummary}`;
         if(!inp.value.trim()) return;
         state.recoveryDays.push({day:inp.value.trim(), tasks:[]});
         activeRecoveryDay = state.recoveryDays.length-1;
+        persist(); render();
+      };
+    }
+    const genBtn = document.getElementById('gv-generate-plan');
+    if(genBtn){
+      genBtn.onclick = ()=>{
+        if(!confirm('Isso vai substituir os dias atuais da Recuperação pelo plano de 9 dias. Continuar?')) return;
+        const ORDER = ['Português','Ciências','Geografia','Matemática','História','Inglês','Redação'];
+        const newDays = [];
+        ORDER.forEach((name, idx)=>{
+          const subj = state.subjects.find(s=>s.name===name);
+          const topics = subj ? subj.topics : [];
+          const n1 = idx*2+1, n2 = idx*2+2;
+          newDays.push({
+            day: `Dia ${n1} — ${name} (preparo)`,
+            tasks: topics.length
+              ? topics.map(t=>({id:uid(), text:t, done:false}))
+              : [{id:uid(), text:`Estudar conteúdo de ${name}`, done:false}]
+          });
+          const nextName = ORDER[idx+1];
+          newDays.push({
+            day: `Dia ${n2} — ${name} (revisão + prova)`,
+            tasks: [
+              {id:uid(), text:`Revisão geral de ${name} (recordação + questões)`, done:false},
+              {id:uid(), text:`PROVA de ${name}`, done:false},
+              {id:uid(), text: nextName ? `À tarde: começar ${nextName}` : 'Fim da recuperação 🎉', done:false},
+            ]
+          });
+        });
+        state.recoveryDays = newDays;
+        activeRecoveryDay = 0;
         persist(); render();
       };
     }
