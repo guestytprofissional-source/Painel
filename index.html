@@ -330,23 +330,52 @@
   <div class="gv-main" id="gv-main"></div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+
 <script>
 (function(){
   const STORAGE_KEY = 'gv-dashboard-v1';
 
-  // ==== SINCRONIZAÇÃO ENTRE APARELHOS (opcional) ====
-  // Usa um Gist secreto do GitHub como "banco de dados" — já que você vai
-  // ter conta no GitHub de qualquer jeito pra hospedar o site.
-  // 1. Vá em https://github.com/settings/tokens -> "Generate new token (classic)"
-  //    marque só a permissão "gist" -> gere e copie o token.
-  // 2. Vá em https://gist.github.com -> crie um gist SECRETO com um arquivo
-  //    chamado data.json e conteúdo {} -> copie o ID do gist (fica na URL).
-  // 3. Cole os dois valores abaixo. Deixe vazio pra usar só localmente.
-  const SYNC_CONFIG = {
-    token: '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',
-    gistId: 'fb66842b6db57d3d84f74935cf20b99b',
+  // Funciona tanto aqui no preview do Claude (window.storage) quanto
+  // hospedado sozinho no GitHub Pages (localStorage do navegador).
+  const hasClaudeStorage = typeof window.storage !== 'undefined';
+  const localAdapter = {
+    async get(key){
+      const raw = localStorage.getItem(key);
+      return raw ? { value: raw } : null;
+    },
+    async set(key, value){
+      localStorage.setItem(key, value);
+      return { value };
+    }
   };
-  const SYNC_ENABLED = !!(SYNC_CONFIG.token && SYNC_CONFIG.gistId);
+  const storageAdapter = hasClaudeStorage
+    ? { get: (k)=>window.storage.get(k, false), set: (k,v)=>window.storage.set(k, v, false) }
+    : localAdapter;
+
+  // ==== SINCRONIZAÇÃO ENTRE APARELHOS (Firebase) ====
+  // Esses dados NÃO são segredo — são feitos pra ficar no código público.
+  // A segurança de verdade vem das Regras do Firestore (login obrigatório).
+  // Preencha depois de criar seu projeto em https://console.firebase.google.com
+  // (veja o passo a passo no README).
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyD63ORqugd2v9EA4rJKWE63OUP2VOnZIfo",
+    authDomain: "painel-8273a.firebaseapp.com",
+    projectId: "painel-8273a",
+    storageBucket: "painel-8273a.firebasestorage.app",
+    messagingSenderId: "312627068795",
+    appId: "1:312627068795:web:98ed5ad6ac277630b007de",
+  };
+  const firebaseReady = !!(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId);
+  let fbAuth = null, fbDb = null, currentUser = null, unsubscribeSnapshot = null;
+  if(firebaseReady){
+    firebase.initializeApp(FIREBASE_CONFIG);
+    fbAuth = firebase.auth();
+    fbDb = firebase.firestore();
+  }
+  function isSyncEnabled(){ return firebaseReady && !!currentUser; }
 
   const DAY_MS = 86400000;
   function todayISO(){ return new Date().toISOString().slice(0,10); }
@@ -615,30 +644,29 @@ RECUPERAÇÃO — DIA ATIVO: ${recSummary}`;
   let activeRoutineDay = null; // set to todayWeekday() on first render
   let detailView = null; // {type:'goal'|'subject', id}
 
+  function userDocRef(){
+    return fbDb.collection('paineis').doc(currentUser.uid);
+  }
   async function cloudGet(){
-    const res = await fetch(`https://api.github.com/gists/${SYNC_CONFIG.gistId}`, {
-      headers: {
-        'Authorization': `token ${SYNC_CONFIG.token}`,
-        'Accept': 'application/vnd.github+json'
-      }
-    });
-    if(!res.ok) throw new Error('cloud get failed: '+res.status);
-    const data = await res.json();
-    const fileContent = data.files && data.files['data.json'] ? data.files['data.json'].content : null;
-    if(!fileContent) return null;
-    return JSON.parse(fileContent);
+    const doc = await userDocRef().get();
+    return doc.exists ? doc.data() : null;
   }
   async function cloudSet(obj){
-    const res = await fetch(`https://api.github.com/gists/${SYNC_CONFIG.gistId}`, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `token ${SYNC_CONFIG.token}`,
-        'Accept': 'application/vnd.github+json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ files: { 'data.json': { content: JSON.stringify(obj) } } })
+    await userDocRef().set(obj);
+  }
+  function startRealtimeSync(){
+    if(unsubscribeSnapshot) unsubscribeSnapshot();
+    unsubscribeSnapshot = userDocRef().onSnapshot((doc)=>{
+      if(doc.exists && doc.metadata.hasPendingWrites===false){
+        state = doc.data();
+        migrateState();
+        const statusEl = document.getElementById('gv-status');
+        if(statusEl) statusEl.textContent = 'sincronizado';
+        render();
+      }
+    }, (err)=>{
+      console.error('Erro no listener em tempo real', err);
     });
-    if(!res.ok) throw new Error('cloud set failed: '+res.status);
   }
 
   function migrateState(){
@@ -654,30 +682,32 @@ RECUPERAÇÃO — DIA ATIVO: ${recSummary}`;
 
   async function loadState(){
     const statusEl = document.getElementById('gv-status');
+    if(firebaseReady){
+      if(statusEl) statusEl.textContent = 'verificando login...';
+      await new Promise((resolve)=>{
+        const unsub = fbAuth.onAuthStateChanged((user)=>{
+          currentUser = user;
+          unsub();
+          resolve();
+        });
+      });
+    }
     try{
-      if(SYNC_ENABLED){
+      if(isSyncEnabled()){
         if(statusEl) statusEl.textContent = 'sincronizando...';
+        startRealtimeSync();
         try{
           const cloud = await cloudGet();
-          if(cloud && cloud.subjects){
-            state = cloud;
-          } else {
-            state = DEFAULT_STATE;
-            await cloudSet(state);
-          }
-        }catch(cloudErr){
-          console.error('Falha na nuvem, usando local', cloudErr);
-          const res = await window.storage.get(STORAGE_KEY, false).catch(()=>null);
-          state = (res && res.value) ? JSON.parse(res.value) : DEFAULT_STATE;
-          if(statusEl) statusEl.textContent = 'offline (sem nuvem)';
-        }
+          if(cloud && cloud.subjects){ state = cloud; }
+          else { state = DEFAULT_STATE; await cloudSet(state); }
+        }catch(e){ state = DEFAULT_STATE; }
       } else {
-        const res = await window.storage.get(STORAGE_KEY, false);
+        const res = await storageAdapter.get(STORAGE_KEY);
         if(res && res.value){
           state = JSON.parse(res.value);
         } else {
           state = DEFAULT_STATE;
-          await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
+          await storageAdapter.set(STORAGE_KEY, JSON.stringify(state));
         }
       }
       migrateState();
@@ -685,11 +715,8 @@ RECUPERAÇÃO — DIA ATIVO: ${recSummary}`;
       state = DEFAULT_STATE;
       migrateState();
     }
-    if(statusEl) statusEl.textContent = SYNC_ENABLED ? 'sincronizado' : 'somente local';
-    const refreshBtn = document.getElementById('gv-sync-refresh');
-    if(refreshBtn){
-      refreshBtn.style.display = SYNC_ENABLED ? 'inline-block' : 'none';
-      refreshBtn.onclick = ()=>{ loadState(); };
+    if(statusEl){
+      statusEl.textContent = isSyncEnabled() ? 'sincronizado' : (firebaseReady ? 'não logado (aba ⚙ Config)' : 'somente local');
     }
     render();
   }
@@ -698,22 +725,22 @@ RECUPERAÇÃO — DIA ATIVO: ${recSummary}`;
   async function saveState(){
     const statusEl = document.getElementById('gv-status');
     try{
-      if(SYNC_ENABLED){
+      if(isSyncEnabled()){
         await cloudSet(state);
         if(statusEl) statusEl.textContent = 'sincronizado';
       } else {
-        await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
+        await storageAdapter.set(STORAGE_KEY, JSON.stringify(state));
       }
     }catch(e){
       console.error('Erro ao salvar', e);
       if(statusEl) statusEl.textContent = 'erro ao sincronizar — salvo só local';
-      try{ await window.storage.set(STORAGE_KEY, JSON.stringify(state), false); }catch(e2){}
+      try{ await storageAdapter.set(STORAGE_KEY, JSON.stringify(state)); }catch(e2){}
     }
   }
   function persist(){
     clearTimeout(saveTimer);
     const statusEl = document.getElementById('gv-status');
-    if(SYNC_ENABLED && statusEl) statusEl.textContent = 'salvando...';
+    if(isSyncEnabled() && statusEl) statusEl.textContent = 'salvando...';
     saveTimer = setTimeout(saveState, 600);
   }
 
@@ -727,6 +754,7 @@ RECUPERAÇÃO — DIA ATIVO: ${recSummary}`;
     {id:'erros', label:'Caderno de Erros'},
     {id:'materias', label:'Matérias & Prazos'},
     {id:'resumo', label:'Resumo'},
+    {id:'config', label:'⚙ Config'},
   ];
 
   function renderTabs(){
@@ -1461,6 +1489,88 @@ RECUPERAÇÃO — DIA ATIVO: ${recSummary}`;
     };
   }
 
+  function renderConfig(){
+    let html = '';
+
+    if(!firebaseReady){
+      html += `<div class="gv-card"><h2>Sincronização entre aparelhos</h2>
+        <div style="font-size:12.5px; color:var(--ink-dim); line-height:1.6;">
+          Ainda não configurado no arquivo do site. Isso precisa ser feito uma vez editando o <code>index.html</code> — veja o passo a passo no README (criar projeto Firebase e colar o <code>FIREBASE_CONFIG</code>). Enquanto isso, o app funciona normal, salvando só localmente.
+        </div>
+      </div>`;
+      document.getElementById('gv-main').innerHTML = html;
+      return;
+    }
+
+    if(currentUser){
+      html += `<div class="gv-card"><h2>Sincronização</h2>
+        <div class="gv-item-meta" style="margin-bottom:10px;">✓ Logado como <b>${currentUser.email}</b> — sincronizando em tempo real.</div>
+        <button class="gv-btn ghost" id="gv-cfg-logout">Sair</button>
+      </div>`;
+      document.getElementById('gv-main').innerHTML = html;
+      document.getElementById('gv-cfg-logout').onclick = async ()=>{
+        if(unsubscribeSnapshot) unsubscribeSnapshot();
+        await fbAuth.signOut();
+        currentUser = null;
+        loadState();
+      };
+      return;
+    }
+
+    html += `<div class="gv-card"><h2>Entrar / criar conta</h2>
+      <div class="gv-item-meta" style="margin-bottom:10px;">
+        Use o mesmo email e senha em todos os aparelhos (PC, celular) pra sincronizar. Na primeira vez, cria a conta; nos outros aparelhos, é só entrar com a mesma.
+      </div>
+      <div class="gv-add-row">
+        <input class="gv-input" type="email" id="gv-cfg-email" placeholder="seuemail@exemplo.com">
+      </div>
+      <div class="gv-add-row">
+        <input class="gv-input" type="password" id="gv-cfg-password" placeholder="Senha (mínimo 6 caracteres)">
+      </div>
+      <div class="gv-add-row">
+        <button class="gv-btn" id="gv-cfg-login">Entrar</button>
+        <button class="gv-btn ghost" id="gv-cfg-signup">Criar conta</button>
+      </div>
+      <div class="gv-item-meta" id="gv-cfg-result" style="margin-top:8px;"></div>
+    </div>`;
+
+    document.getElementById('gv-main').innerHTML = html;
+
+    function getCreds(){
+      return {
+        email: document.getElementById('gv-cfg-email').value.trim(),
+        password: document.getElementById('gv-cfg-password').value,
+      };
+    }
+    function showResult(msg){ document.getElementById('gv-cfg-result').textContent = msg; }
+
+    document.getElementById('gv-cfg-login').onclick = async ()=>{
+      const { email, password } = getCreds();
+      if(!email || !password){ showResult('Preenche email e senha.'); return; }
+      showResult('Entrando...');
+      try{
+        await fbAuth.signInWithEmailAndPassword(email, password);
+        showResult('✓ Entrou! Sincronizando...');
+        loadState();
+      }catch(err){
+        showResult('✗ Não deu certo: ' + (err.message||'erro desconhecido'));
+      }
+    };
+    document.getElementById('gv-cfg-signup').onclick = async ()=>{
+      const { email, password } = getCreds();
+      if(!email || !password){ showResult('Preenche email e senha.'); return; }
+      if(password.length < 6){ showResult('Senha precisa ter pelo menos 6 caracteres.'); return; }
+      showResult('Criando conta...');
+      try{
+        await fbAuth.createUserWithEmailAndPassword(email, password);
+        showResult('✓ Conta criada! Sincronizando...');
+        loadState();
+      }catch(err){
+        showResult('✗ Não deu certo: ' + (err.message||'erro desconhecido'));
+      }
+    };
+  }
+
   function renderErros(){
     let html = `<div class="gv-card"><h2>Como usar o Caderno de Erros</h2>
       <div style="font-size:12.5px; color:var(--ink-dim); line-height:1.5;">
@@ -1556,6 +1666,7 @@ RECUPERAÇÃO — DIA ATIVO: ${recSummary}`;
     else if(activeTab==='erros') renderErros();
     else if(activeTab==='materias') renderMaterias();
     else if(activeTab==='resumo') renderResumo();
+    else if(activeTab==='config') renderConfig();
   }
 
   loadState();

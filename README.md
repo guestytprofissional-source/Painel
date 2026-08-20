@@ -2,27 +2,49 @@
 
 ## Sincronizar PC e celular (recomendado)
 
-Sem isso, cada aparelho guarda os dados separado. Com isso, os dois mostram sempre a mesma coisa. Usamos um **Gist secreto do GitHub** como "banco de dados" — já que você vai ter conta no GitHub de qualquer jeito pra hospedar o site.
+Sem isso, cada aparelho guarda os dados separado. Com isso, os dois mostram sempre a mesma coisa, atualizando sozinho em tempo real. Usamos o **Firebase** (Google) — nesse caso você faz **login com email e senha**, sem precisar mexer em token nenhum no dia a dia.
 
-1. Vá em https://github.com/settings/tokens → **"Generate new token (classic)"**.
-2. Dê um nome (ex: "painel-sync"), marque **só** a caixinha **"gist"** → gere o token → **copie na hora** (ele some depois).
-3. Vá em https://gist.github.com → crie um gist **secreto** (não público) com um arquivo chamado `data.json` e conteúdo:
-   ```json
-   {}
+### Passo 1 — Criar o projeto Firebase (só uma vez)
+
+1. Vá em https://console.firebase.google.com → **"Criar um projeto"** (ou "Add project") → dê um nome (ex: "painel-miguel") → pode desativar o Google Analytics → **Criar**.
+2. Dentro do projeto, no menu esquerdo: **Build → Authentication → Get started** → aba **Sign-in method** → ativa **"Email/Password"** → Save.
+3. Ainda no menu esquerdo: **Build → Firestore Database → Create database** → escolha modo **produção** → escolha uma localização (qualquer uma próxima, ex: `southamerica-east1`) → Enable.
+4. Na aba **Rules** do Firestore, substitua o conteúdo por isto e clica em **Publish**:
    ```
-4. Copie o **ID do gist** (fica no final da URL, depois do seu usuário — ex: `github.com/SEU-USUARIO/a1b2c3d4e5f6...` → o ID é `a1b2c3d4e5f6...`).
-5. Abra o `index.html` num editor de texto, procure por `SYNC_CONFIG` (bem no início do `<script>`) e preencha:
-   ```js
-   const SYNC_CONFIG = {
-     token: 'COLE_SEU_TOKEN_AQUI',
-     gistId: 'COLE_O_ID_DO_GIST_AQUI',
-   };
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /paineis/{userId} {
+         allow read, write: if request.auth != null && request.auth.uid == userId;
+       }
+     }
+   }
    ```
-6. Salve o arquivo e suba pro GitHub (passo abaixo).
+   (Isso garante que só você, logado, consegue ler ou escrever seus próprios dados.)
+5. Volta pra visão geral do projeto (ícone de engrenagem → **Project settings**) → desce até **"Your apps"** → clica no ícone **</>** (Web) → dá um nome → **Register app**. Vai aparecer um bloco `firebaseConfig = {...}` — copie ele.
 
-Depois disso, o cabeçalho do painel mostra "sincronizado", e tem um botão **↻ Atualizar** pra puxar mudanças feitas no outro aparelho na hora.
+### Passo 2 — Colar a config no arquivo (só uma vez, pode subir pro GitHub)
 
-**Importante:** esse token dá acesso aos seus gists — não compartilhe o código do site publicamente com o token dentro. Se for subir num repositório público, é melhor deixar o `SYNC_CONFIG` vazio no GitHub e preencher só localmente em cada aparelho antes de instalar (edita o arquivo, salva, reinstala — dá mais trabalho, mas não expõe o token).
+Abra o `index.html` num editor de texto, procure por `FIREBASE_CONFIG` (perto do início do `<script>`) e preencha com os valores que você copiou:
+```js
+const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSy...',
+  authDomain: 'painel-miguel-xxxx.firebaseapp.com',
+  projectId: 'painel-miguel-xxxx',
+  storageBucket: 'painel-miguel-xxxx.appspot.com',
+  messagingSenderId: '123456789',
+  appId: '1:123456789:web:abc123',
+};
+```
+Esses valores **não são segredo** — o Firebase é feito pra funcionar assim, com essa config visível no código. A segurança de verdade são as Regras que você colou no passo 1.4 (só quem logar com sua conta acessa seus dados). Pode subir esse arquivo pro GitHub sem medo de bloqueio.
+
+### Passo 3 — Login (uma vez por aparelho)
+
+1. Suba o `index.html` (já com a config preenchida) pro GitHub Pages.
+2. Abre o site → aba **⚙ Config** → **"Criar conta"** com um email e senha que você escolher.
+3. Em qualquer outro aparelho (celular, outro PC), abre o mesmo site → aba ⚙ Config → **"Entrar"** com o mesmo email e senha.
+
+Depois de logado uma vez, o navegador continua logado sozinho — não pede de novo. Os dados sincronizam automaticamente e em tempo real entre todos os aparelhos logados com a mesma conta.
 
 ## Como colocar no GitHub Pages (rápido, PC e celular)
 
